@@ -1,0 +1,26 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+
+#ifndef _THINK_LMI_H_
+#define _THINK_LMI_H_
+
+#include <linux/ioctl.h>
+
+#define TLMI_SETTINGS_MAXLEN 128
+#define TLMI_PWD_MAXLEN     64 //Is this too small?
+#define TLMI_PWDTYPE_MAXLEN 64
+#define TLMI_ENC_MAXLEN     64
+#define TLMI_LANG_MAXLEN     4
+/*Longest string should be in the set - allow size of BIOS
+ * option and choice
+ */
+#define TLMI_GETSET_MAXLEN (TLMI_SETTINGS_MAXLEN + TLMI_SETTINGS_MAXLEN)
+
+#define THINKLMI_GET_SETTINGS _IOR('T', 1, int *)
+#define THINKLMI_GET_SETTINGS_STRING _IOWR('T', 2, char *)
+#define THINKLMI_SET_SETTING _IOW('T', 3, char *)
+#define THINKLMI_SHOW_SETTING _IOWR('T', 4, char *)
+#define THINKLMI_AUTHENTICATE _IOW('T', 5, char *)
+#define THINKLMI_CHANGE_PASSWORD _IOW('T', 6, char *)
+
+#endif /* !_THINK_LMI_H_ */
+
