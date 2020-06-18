@@ -135,6 +135,10 @@ int main(int argc, char *argv[])
 	change_password
     } option;
 
+    if (getuid()!=0) {
+	    printf("Please run with administrator privileges\n");
+	    exit(0);
+    }
     switch(argc)
     {
 	    case 2:

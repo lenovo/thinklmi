@@ -40,6 +40,7 @@
 #include <linux/acpi.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
+#include <linux/version.h>
 #include "think-lmi.h"
 
 #define	THINK_LMI_FILE	"think-lmi"
@@ -1581,7 +1582,11 @@ static int think_lmi_remove(struct wmi_device *wdev)
 	return 0;
 }
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0))
 static int think_lmi_probe(struct wmi_device *wdev, const void *context)
+#else
+static int think_lmi_probe(struct wmi_device *wdev)
+#endif
 {
 	return think_lmi_add(wdev);
 }
