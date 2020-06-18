@@ -5,7 +5,7 @@
 
 #include <linux/ioctl.h>
 
-#define TLMI_SETTINGS_MAXLEN 128
+#define TLMI_SETTINGS_MAXLEN 512
 #define TLMI_PWD_MAXLEN     64 //Is this too small?
 #define TLMI_PWDTYPE_MAXLEN 64
 #define TLMI_ENC_MAXLEN     64

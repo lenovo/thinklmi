@@ -1056,8 +1056,15 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			tmp_string = (char *)kmalloc(strlen(settings) + 3, GFP_KERNEL);
 			count = sprintf(tmp_string, "%s\n", settings);
 		}
+		if (count > TLMI_SETTINGS_MAXLEN) {
+			//Unlikely to happen - but if the string is going to overflow the
+			//amount of space that is available then we need to truncate. 
+			//Issue a warning so we know about these
+			count = TLMI_SETTINGS_MAXLEN;
+			pr_warn("WARNING: Result truncated to fit string buffer\n");
+		}
 		tmp_string[count-1] = '\0';
-		//printk("tmp_string : %s (%ld)\n", tmp_string, count); 
+		//printk("tmp_string : %s (%ld)\n", tmp_string, count);
 		if (copy_to_user((char *)arg, tmp_string, count)) {
 			kfree(tmp_string);
 			return -EFAULT;
