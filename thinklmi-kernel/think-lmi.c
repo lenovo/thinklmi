@@ -945,13 +945,26 @@ static int think_lmi_chardev_open(struct inode *inode, struct file *file)
         return THINK_LMI_SUCCESS;
 }
 
-//Lenovo linux utility team
+static int validate_setting_name(struct think_lmi *think, char* setting)
+{
+	int i;
+	for (i = 0; i <= think->settings_count; i++) {
+		if (think->settings[i] != NULL) {
+			if (!strcmp(setting, think->settings[i])) {
+					return i;
+			}
+		}
+	}
+	/* No match found - return error condition */
+	return -EINVAL;
+}
+
 //Character device ioctl interface
 static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 					unsigned long arg)
 {
         struct think_lmi *think;
-	int i,j,ret,item;
+	int j,ret,item;
 	char settings_str[TLMI_SETTINGS_MAXLEN];
 	char get_set_string[TLMI_GETSET_MAXLEN];
 #if 0 /*TO BE FIXED*/
@@ -984,24 +997,37 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			return -EFAULT;
 		break;
 	case THINKLMI_SET_SETTING:
-
 		if (copy_from_user(get_set_string, (void *)arg,
 				   sizeof(get_set_string)))
 			return -EFAULT;
 
-		if (*think->auth_string) 
-			count = strlen(get_set_string) + strlen(think->auth_string) + 2;
-		else
-			count =  strlen(get_set_string) + 1;
+		/* First validate that this is a valid setting name*/
+		value = strchr(get_set_string, ',');
+		if (!value) {
+			ret = -EINVAL;
+			goto error;
+		}
+		tmp_string = kmalloc(value - get_set_string + 1, GFP_KERNEL);
+		snprintf(tmp_string, value - get_set_string + 1, "%s", get_set_string);
+		ret = validate_setting_name(think, tmp_string);
+		kfree(tmp_string);
+		if (ret < 0) 
+			goto error;
 
-		tmp_string = kmalloc(count, GFP_KERNEL);
-		if (*think->auth_string) 
+		/* If authorisation required add that to command */
+		if (*think->auth_string) {
+			count = strlen(get_set_string) + strlen(think->auth_string) + 2;
+			tmp_string = kmalloc(count, GFP_KERNEL);
 			snprintf(tmp_string, count, "%s,%s;", get_set_string, think->auth_string);
-		else
+		} else {
+			count =  strlen(get_set_string) + 1;
+			tmp_string = kmalloc(count, GFP_KERNEL);
 			snprintf(tmp_string, count, "%s;", get_set_string);
+		}
 
 		ret = think_lmi_set_bios_settings(tmp_string);
 		kfree(tmp_string);
+
 		ret = think_lmi_save_bios_settings(think->auth_string);
                 if (ret) {
 			/* Try to discard the settings if we failed to apply them. */
@@ -1010,30 +1036,22 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
                 }
 		break;
 	case THINKLMI_SHOW_SETTING:
-		item = 0;
+		item = -1;
 		if (copy_from_user(get_set_string, (void *)arg,
 				   sizeof(get_set_string)))
 			return -EFAULT;
-		//pr_info("%s\n", get_set_string);
-		for (i = 0; i <= think->settings_count; i++) {
-			if (think->settings[i] != NULL) {
-				if (!strcmp(get_set_string,
-					    think->settings[i])) {
-					pr_info("the setting is %d\n", i);
-					item = i;
-				}
-			}
+		item = validate_setting_name(think, get_set_string);
+		if (item < 0) { /*Invalid entry*/
+			ret = -EINVAL;
+			goto error;
 		}
-
 		/*Do a WMI query for the settings */
-		ret = think_lmi_setting(item, &settings,
-					LENOVO_BIOS_SETTING_GUID);
+		ret = think_lmi_setting(item, &settings, LENOVO_BIOS_SETTING_GUID);
 		if (ret)
 			goto error;
 
 		if (think->can_get_bios_selections)
 		{
-			printk("Get choices\n");
 			ret = think_lmi_get_bios_selections(get_set_string,
 						    &choices);
 			if (ret)
@@ -1148,15 +1166,11 @@ error:
 
 }
 
-//Lenovo linux utility team
-//Character device release interface
 static int think_lmi_chardev_release(struct inode *inode, struct file *file)
 {
 	return THINK_LMI_SUCCESS;
 }
 
-//Lenovo linux utility team
-//Character device File operation structure and entrypoints
 
 static const struct file_operations think_lmi_chardev_fops = {
 	.open           = think_lmi_chardev_open,
@@ -1164,6 +1178,7 @@ static const struct file_operations think_lmi_chardev_fops = {
 	.release        = think_lmi_chardev_release,
 };
 
+/* --- debugfs utilities ------------------- */
 static void show_bios_setting_line(struct think_lmi *think,
 				   struct seq_file *m, int i, bool list_valid)
 {
@@ -1431,6 +1446,8 @@ error_debugfs:
 	return -ENOMEM;
 }
 
+/* ---------------------- */
+
 static void think_lmi_chardev_initialize(struct think_lmi *think)
 {
         int ret;
@@ -1514,8 +1531,7 @@ static void think_lmi_analyze(struct think_lmi *think)
 		think->settings_count++;
 	}
 
-	pr_info("Found %d settings", think->settings_count);
-
+	//pr_info("Found %d settings", think->settings_count);
 	if (wmi_has_guid(LENOVO_SET_BIOS_SETTINGS_GUID) &&
 	    wmi_has_guid(LENOVO_SAVE_BIOS_SETTINGS_GUID)) {
 		think->can_set_bios_settings = true;
