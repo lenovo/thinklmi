@@ -51,9 +51,11 @@ void get_settings_all(int fd)
 void thinklmi_get(int fd, char * argv2)
 {
 	char settings_str[TLMI_SETTINGS_MAXLEN];
+	int err;
         strncpy(settings_str, argv2, TLMI_SETTINGS_MAXLEN);
-	if(ioctl(fd, THINKLMI_SHOW_SETTING, &settings_str) == -1)
-	   perror(" ioctl set_ setting failed");
+	err = ioctl(fd, THINKLMI_SHOW_SETTING, &settings_str);
+	if(err == -1)
+	   perror("Invalid setting name");
 	else
            printf("%s\n", settings_str);
 }
@@ -66,7 +68,7 @@ void thinklmi_set(int fd, char * argv2, char* argv3)
 	strncat(setting_string, argv3, TLMI_SETTINGS_MAXLEN);
 
 	if(ioctl(fd, THINKLMI_SET_SETTING, &setting_string) == -1) {
-	   perror(" BIOS set_setting failed");
+	   perror("Unable to change setting");
 	} else {
 	   printf("BIOS Setting changed\n");
            printf("Setting will not change until reboot\n");
@@ -158,7 +160,7 @@ int main(int argc, char *argv[])
 	    case 4:
 		    if (strcmp(argv[1], "-s") == 0) {
 			    option = set;
-			    printf("%s %s \n", argv[2], argv[3]);
+			    //printf("%s %s \n", argv[2], argv[3]);
 		    } else 
 			    show_usage();
 		    break;
