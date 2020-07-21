@@ -434,13 +434,11 @@ static int think_lmi_load_default(const char *password)
 					password);
 }
 
-#if 0 /*TO BE FIXED*/
 static int think_lmi_set_bios_password(const char *settings)
 {
 	return think_lmi_simple_call(LENOVO_SET_BIOS_PASSWORD_GUID,
 					settings);
 }
-#endif
 
 static int think_lmi_password_settings(struct think_lmi_pcfg *pcfg)
 {
@@ -967,9 +965,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 	int j,ret,item;
 	char settings_str[TLMI_SETTINGS_MAXLEN];
 	char get_set_string[TLMI_GETSET_MAXLEN];
-#if 0 /*TO BE FIXED*/
 	char newpassword[TLMI_PWD_MAXLEN];
-#endif
 	char *settings = NULL, *choices = NULL;
 	char *value;
 	char *tmp_string = NULL;
@@ -1114,11 +1110,11 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		update_auth_string(think);
 		break;
 
-#if 0 /*TO BE FIXED*/
 	case THINKLMI_CHANGE_PASSWORD:
 		if (copy_from_user(get_set_string, (void *)arg,
 				   sizeof(get_set_string)))
 			return -EFAULT;
+		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s",get_set_string);
 		tmp_string = get_set_string;
 
                 value = strsep(&tmp_string, ",");
@@ -1150,9 +1146,8 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 
 		update_auth_string(think);
 
-	        ret = think_lmi_set_bios_password(get_set_string);
+	        ret = think_lmi_set_bios_password(settings_str);
 		break;
-#endif
 	default:
 		return -EINVAL;
 	}
