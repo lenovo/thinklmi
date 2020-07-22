@@ -88,7 +88,6 @@ void thinklmi_authenticate(int fd, char *passwd, char *encode, char *lang )
 	}
 }
 
-#if 0 /*To be fixed*/
 void thinklmi_change_password(int fd, char *oldpass, char *newpass, char *passtype, char *encode, char *lang)
 {
 	char setting_string[TLMI_GETSET_MAXLEN];
@@ -101,23 +100,16 @@ void thinklmi_change_password(int fd, char *oldpass, char *newpass, char *passty
            printf("Setting will not change until reboot\n");
 	}
 }
-#endif
 
 static void show_usage(void)
 {
-#if 0 /*To be fixed*/
 	fprintf(stdout, "Usage: thinklmi [-g | -s | -p | -c | getsettings] <options>\n");
-#else
-	fprintf(stdout, "Usage: thinklmi [-g | -s | -p | getsettings] <options>\n");
-#endif
 	fprintf(stdout, "Option details:  \n");
 	fprintf(stdout, "\t getsettings - display all available BIOS options:  \n");
 	fprintf(stdout, "\t -g [BIOS option] - Get the current setting and choices for given BIOS option\n");
 	fprintf(stdout, "\t -s [BIOS option] [value] - Set the given BIOS option to given value\n");
 	fprintf(stdout, "\t -p [password] [encoding] [kbdlang] - Set authentication details. \n");
-#if 0 /*To be fixed*/
 	fprintf(stdout, "\t -c [password] [new password] [password type] [encoding] [kbdlang] - Change password. \n");
-#endif
 	fprintf(stdout, "Notes:  \n");
 	fprintf(stdout, "\t password type can be \"pap\" or \"pop\" \n");
 	fprintf(stdout, "\t encoding can be \"ascii\" or \"scancode\" \n");
@@ -199,11 +191,9 @@ int main(int argc, char *argv[])
 	    case authenticate:
 		    thinklmi_authenticate(fd, argv[2], argv[3], argv[4]);
 		    break;
-#if 0 /*To be fixed*/
 	    case change_password:
 		    thinklmi_change_password(fd, argv[2], argv[3], argv[4], argv[5], argv[6]);
 		    break;
-#endif
     }
     close (fd);
  
