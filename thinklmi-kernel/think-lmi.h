@@ -6,11 +6,12 @@
 #include <linux/ioctl.h>
 
 #define TLMI_SETTINGS_MAXLEN 512
-#define TLMI_PWD_MAXLEN     64 //Is this too small?
-#define TLMI_PWDTYPE_MAXLEN 64
-#define TLMI_ENC_MAXLEN     64
-#define TLMI_LANG_MAXLEN     4
-/*Longest string should be in the set - allow size of BIOS
+#define TLMI_PWD_MAXLEN       64
+#define TLMI_PWDTYPE_MAXLEN   64
+#define TLMI_ENC_MAXLEN       64
+#define TLMI_LANG_MAXLEN       4
+/*
+ * Longest string should be in the set command: allow size of BIOS
  * option and choice
  */
 #define TLMI_GETSET_MAXLEN (TLMI_SETTINGS_MAXLEN + TLMI_SETTINGS_MAXLEN)
