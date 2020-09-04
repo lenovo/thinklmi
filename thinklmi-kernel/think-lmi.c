@@ -245,8 +245,6 @@ enum {
 
 #define TLMI_NUM_DEVICES 1
 
-/* Only add an alias on this one, since it's the one used
- * in think_lmi_probe */
 MODULE_ALIAS("tlmi:"LENOVO_BIOS_SETTING_GUID);
 
 struct think_lmi_pcfg {
@@ -258,28 +256,6 @@ struct think_lmi_pcfg {
 	uint32_t supported_keyboard;
 };
 
-/*
- * think_lmi/       - debugfs root directory
- *   bios_settings
- *   bios_setting
- *   list_valid_choices
- *   set_bios_settings
- *   save_bios_settings
- *   discard_bios_settings
- *   load_default
- *   set_bios_password
- *   argument
- *   instance
- *   instance_count
- *   bios_password_settings
- */
-struct think_lmi_debug {
-	struct dentry *root;
-	u8 instances_count;
-	u8 instance;
-	char argument[512];
-};
-
 struct think_lmi {
 	struct wmi_device *wmi_device;
 
@@ -289,7 +265,7 @@ struct think_lmi {
 	char password_encoding[TLMI_ENC_MAXLEN];
 	char password_kbdlang[TLMI_LANG_MAXLEN]; /* 2 bytes for \n\0 */
 	char auth_string[TLMI_PWD_MAXLEN + TLMI_ENC_MAXLEN + TLMI_LANG_MAXLEN + 2]; 
-	char password_type[TLMI_PWDTYPE_MAXLEN]; //Lenovo linux utility team
+	char password_type[TLMI_PWDTYPE_MAXLEN];
 
 	bool can_set_bios_settings;
 	bool can_discard_bios_settings;
@@ -300,14 +276,12 @@ struct think_lmi {
 
 	char *settings[256];
 	struct dev_ext_attribute *devattrs;
-	struct think_lmi_debug debug;
 	struct cdev c_dev;
 };
 
 static dev_t tlmi_dev;
 static struct class *tlmi_class;
 
-/* helpers */
 static int think_lmi_errstr_to_err(const char *errstr)
 {
 	if (!strcmp(errstr, "Success"))
@@ -339,7 +313,6 @@ static int think_lmi_extract_error(const struct acpi_buffer *output)
 	kfree(obj);
 	return ret;
 }
-
 
 static int think_lmi_simple_call(const char *guid,
 				    const char *arg)
@@ -404,201 +377,27 @@ static int think_lmi_get_bios_selections(const char *item, char **value)
 
 static int think_lmi_set_bios_settings(const char *settings)
 {
-
-	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID,
-					settings);
-}
-
-static int think_lmi_set_platform_settings(const char *settings)
-{
-
-	return think_lmi_simple_call(LENOVO_SET_PLATFORM_SETTINGS_GUID,
-					settings);
+	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID, settings);
 }
 
 static int think_lmi_save_bios_settings(const char *password)
 {
-	return think_lmi_simple_call(LENOVO_SAVE_BIOS_SETTINGS_GUID,
-					password);
+	return think_lmi_simple_call(LENOVO_SAVE_BIOS_SETTINGS_GUID, password);
 }
 
 static int think_lmi_discard_bios_settings(const char *password)
 {
-	return think_lmi_simple_call(LENOVO_DISCARD_BIOS_SETTINGS_GUID,
-					password);
-}
-
-static int think_lmi_load_default(const char *password)
-{
-	return think_lmi_simple_call(LENOVO_LOAD_DEFAULT_SETTINGS_GUID,
-					password);
+	return think_lmi_simple_call(LENOVO_DISCARD_BIOS_SETTINGS_GUID,	password);
 }
 
 static int think_lmi_set_bios_password(const char *settings)
 {
-	return think_lmi_simple_call(LENOVO_SET_BIOS_PASSWORD_GUID,
-					settings);
-}
-
-static int think_lmi_password_settings(struct think_lmi_pcfg *pcfg)
-{
-	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
-	const union acpi_object *obj;
-	acpi_status status;
-
-	status = wmi_query_block(LENOVO_BIOS_PASSWORD_SETTINGS_GUID, 0,
-				 &output);
-	if (ACPI_FAILURE(status))
-		return -EIO;
-
-	obj = output.pointer;
-	if (!obj || obj->type != ACPI_TYPE_BUFFER || !obj->buffer.pointer)
-		return -EIO;
-	if (obj->buffer.length != sizeof(*pcfg)) {
-
-		/* The size of thinkpad_wmi_pcfg on ThinkStation is larger than ThinkPad.
-		 * To make the driver compatible on different brands, we permit it to get
-		 * the data in below case.
-		 */
-		if (obj->buffer.length > sizeof(*pcfg)) {
-			memcpy(pcfg, obj->buffer.pointer, sizeof(*pcfg));
-			kfree(obj);
-			return 0;
-		} else {
-			pr_warn("Unknown pcfg buffer length %d\n",
-				obj->buffer.length);
-			kfree(obj);
-			return -EIO;
-		}
-	}
-
-	memcpy(pcfg, obj->buffer.pointer, obj->buffer.length);
-	kfree(obj);
-	return 0;
-}
-
-/* sysfs */
-
-#define to_ext_attr(x) container_of(x, struct dev_ext_attribute, attr)
-
-static ssize_t show_setting(struct device *dev,
-			    struct device_attribute *attr,
-			    char *buf)
-{
-	struct think_lmi *think = dev_get_drvdata(dev);
-	struct dev_ext_attribute *ea = to_ext_attr(attr);
-	int item = (uintptr_t)ea->var;
-	char *name = think->settings[item];
-	char *settings = NULL, *choices = NULL, *value;
-	ssize_t count = 0;
-	int ret;
-
-	ret = think_lmi_setting(item, &settings, LENOVO_BIOS_SETTING_GUID);
-	if (ret)
-		return ret;
-	if (!settings)
-		return -EIO;
-
-	if (think->can_get_bios_selections) {
-		ret = think_lmi_get_bios_selections(name, &choices);
-		if (ret)
-			goto error;
-		if (!choices || !*choices) {
-			ret = -EIO;
-			goto error;
-		}
-	}
-
-	value = strchr(settings, ',');
-	if (!value)
-		goto error;
-	value++;
-
-	count = sprintf(buf, "%s\n", value);
-	if (choices)
-		count += sprintf(buf + count, "%s\n", choices);
-
-error:
-	kfree(settings);
-	if (choices)
-		kfree(choices);
-	return ret ? ret : count;
-}
-
-static ssize_t store_setting(struct device *dev,
-			      struct device_attribute *attr,
-			      const char *buf, size_t count)
-{
-	struct think_lmi *think = dev_get_drvdata(dev);
-	struct dev_ext_attribute *ea = to_ext_attr(attr);
-	int item_idx = (uintptr_t)ea->var;
-	char *item = think->settings[item_idx];
-	int ret;
-	size_t buffer_size;
-	char *buffer;
-
-	/* Convert '\' to '/'. Please have a look at think_lmi_analyze. */
-	int spleng = 0;
-	int num = 0;
-
-	spleng = strlen(item);
-	for (num = 0; num < spleng; num++) {
-		if (item[num] == '\\')
-			item[num] = '/';
-	}
-
-	/* Format: 'Item,Value,Authstring;' */
-	buffer_size = (strlen(item) + 1 + count + 1 +
-		       sizeof(think->auth_string) + 2);
-	buffer = kmalloc(buffer_size, GFP_KERNEL);
-	if (!buffer)
-		return -ENOMEM;
-
-	strcpy(buffer, item);
-	strcat(buffer, ",");
-	strncat(buffer, buf, count);
-	if (count)
-		strim(buffer);
-	if (*think->auth_string) {
-		strcat(buffer, ",");
-		strcat(buffer, think->auth_string);
-	}
-	strcat(buffer, ";");
-
-	ret = think_lmi_set_bios_settings(buffer);
-	if (ret)
-		goto end;
-
-	ret = think_lmi_save_bios_settings(think->auth_string);
-	if (ret) {
-		/* Try to discard the settings if we failed to apply them. */
-		think_lmi_discard_bios_settings(think->auth_string);
-		goto end;
-	}
-	ret = count;
-
-end:
-	kfree(buffer);
-	return ret;
-}
-
-
-/* Password related sysfs methods */
-static ssize_t show_auth(struct think_lmi *think, char *buf,
-			 const char *data, size_t size)
-{
-	if (!capable(CAP_SYS_ADMIN))
-		return -EPERM;
-	if (!buf)
-		return -EIO;
-
-	return sprintf(buf, "%s\n", data ? : "(nil)");
+	return think_lmi_simple_call(LENOVO_SET_BIOS_PASSWORD_GUID, settings);
 }
 
 /* Create the auth string from password chunks */
 static void update_auth_string(struct think_lmi *think)
 {
-
 	if (!*think->password) {
 		/* No password at all */
 		think->auth_string[0] = '\0';
@@ -617,324 +416,20 @@ static void update_auth_string(struct think_lmi *think)
 	}
 }
 
-static ssize_t store_auth(struct think_lmi *think,
-			  const char *buf, size_t count,
-			  char *dst, size_t size)
+static int validate_setting_name(struct think_lmi *think, char* setting)
 {
-	ssize_t ret;
-
-	if (!capable(CAP_SYS_ADMIN))
-		return -EPERM;
-
-	if (count > size - 1)
-		return -EINVAL;
-
-	/* dst may be being reused, NUL-terminate */
-	ret = strscpy(dst, buf, size);
-	if (ret < 0)
-		return ret;
-	if (count)
-		strim(dst);
-
-	update_auth_string(think);
-
-	return count;
-}
-
-#define THINK_LMI_CREATE_AUTH_ATTR(_name, _uname, _mode)		\
-	static ssize_t show_##_name(struct device *dev,			\
-				    struct device_attribute *attr,	\
-				    char *buf)				\
-	{								\
-		struct think_lmi *think = dev_get_drvdata(dev);		\
-									\
-		return show_auth(think, buf,				\
-				 think->_name,				\
-				 sizeof(think->_name));			\
-	}								\
-	static ssize_t store_##_name(struct device *dev,		\
-				     struct device_attribute *attr,	\
-				     const char *buf, size_t count)	\
-	{								\
-		struct think_lmi *think = dev_get_drvdata(dev);		\
-									\
-		return store_auth(think, buf, count,			\
-				  think->_name,				\
-				  sizeof(think->_name));		\
-	}								\
-	static struct device_attribute dev_attr_##_name = {		\
-		.attr = {						\
-			.name = _uname,					\
-			.mode = _mode },				\
-		.show   = show_##_name,					\
-		.store  = store_##_name,				\
-	}
-
-THINK_LMI_CREATE_AUTH_ATTR(password, "password", S_IRUSR|S_IWUSR);
-THINK_LMI_CREATE_AUTH_ATTR(password_encoding, "password_encoding",
-			      S_IRUSR|S_IWUSR);
-THINK_LMI_CREATE_AUTH_ATTR(password_kbdlang, "password_kbd_lang",
-			      S_IRUSR|S_IWUSR);
-THINK_LMI_CREATE_AUTH_ATTR(password_type, "password_type", S_IRUSR|S_IWUSR);
-
-static ssize_t show_password_settings(struct device *dev,
-				      struct device_attribute *attr,
-				      char *buf)
-{
-	struct think_lmi_pcfg pcfg;
-	ssize_t ret;
-
-	ret = think_lmi_password_settings(&pcfg);
-	if (ret)
-		return ret;
-	ret += sprintf(buf,       "password_mode:       %#x\n",
-		       pcfg.password_mode);
-	ret += sprintf(buf + ret, "password_state:      %#x\n",
-		       pcfg.password_state);
-	ret += sprintf(buf + ret, "min_length:          %d\n", pcfg.min_length);
-	ret += sprintf(buf + ret, "max_length:          %d\n", pcfg.max_length);
-	ret += sprintf(buf + ret, "supported_encodings: %#x\n",
-		       pcfg.supported_encodings);
-	ret += sprintf(buf + ret, "supported_keyboard:  %#x\n",
-		       pcfg.supported_keyboard);
-	return ret;
-}
-
-static DEVICE_ATTR(password_settings, S_IRUSR, show_password_settings, NULL);
-
-#if 0 /*TO BE FIXED*/
-static ssize_t store_password_change(struct device *dev,
-				     struct device_attribute *attr,
-				     const char *buf, size_t count)
-{
-	struct think_lmi *think = dev_get_drvdata(dev);
-	size_t buffer_size;
-	char *buffer;
-	ssize_t ret;
-
-	if (!capable(CAP_SYS_ADMIN))
-		return -EPERM;
-
-	/* Format: 'PasswordType,CurrentPw,NewPw,Encoding,KbdLang;' */
-
-	/* auth_string is the size of CurrentPassword,Encoding,KbdLang */
-	buffer_size = (sizeof(think->password_type) + 1 + count + 2);
-
-	if (*think->password)
-		buffer_size += 1 + sizeof(think->password);
-	if (*think->password_encoding)
-		buffer_size += 1 + sizeof(think->password_encoding);
-	if (*think->password_kbdlang)
-		buffer_size += 1 + sizeof(think->password_kbdlang);
-
-	buffer = kmalloc(buffer_size, GFP_KERNEL);
-	if (!buffer)
-		return -ENOMEM;
-
-	strcpy(buffer, think->password_type);
-
-	if (*think->password) {
-		strcat(buffer, ",");
-		strcat(buffer, think->password);
-	}
-	strcat(buffer, ",");
-	strncat(buffer, buf, count);
-	if (count)
-		strim(buffer);
-
-	if (*think->password_encoding) {
-		strcat(buffer, ",");
-		strcat(buffer, think->password_encoding);
-	}
-	if (*think->password_kbdlang) {
-		strcat(buffer, ",");
-		strcat(buffer, think->password_kbdlang);
-	}
-	strcat(buffer, ";");
-
-	ret = think_lmi_set_bios_password(buffer);
-	kfree(buffer);
-	if (ret)
-		return ret;
-
-	return count;
-}
-
-static struct device_attribute dev_attr_password_change = {
-	.attr = {
-		.name = "password_change",
-		.mode = S_IWUSR },
-	.store  = store_password_change,
-};
-#endif
-
-static ssize_t store_load_default(struct device *dev,
-				  struct device_attribute *attr,
-				  const char *buf, size_t count)
-{
-	int ret;
-	struct think_lmi *think = dev_get_drvdata(dev);
-
-	ret = think_lmi_load_default(think->auth_string);
-	if (ret)
-		return ret;
-	return count;
-
-}
-
-static DEVICE_ATTR(load_default_settings, S_IWUSR, NULL, store_load_default);
-
-static struct attribute *platform_attributes[] = {
-	&dev_attr_password_settings.attr,
-	&dev_attr_password.attr,
-	&dev_attr_password_encoding.attr,
-	&dev_attr_password_kbdlang.attr,
-	&dev_attr_password_type.attr,
-#if 0 /*TO BE FIXED*/
-	&dev_attr_password_change.attr,
-#endif
-	&dev_attr_load_default_settings.attr,
-	NULL
-};
-
-static umode_t think_sysfs_is_visible(struct kobject *kobj,
-					 struct attribute *attr,
-					 int idx)
-{
-	bool supported = true;
-	return supported ? attr->mode : 0;
-}
-
-static struct attribute_group platform_attribute_group = {
-	.is_visible	= think_sysfs_is_visible,
-	.attrs		= platform_attributes
-};
-
-static void think_lmi_sysfs_exit(struct wmi_device *wdev)
-{
-	struct think_lmi *think = dev_get_drvdata(&wdev->dev);
 	int i;
-
-	sysfs_remove_group(&wdev->dev.kobj, &platform_attribute_group);
-
-	if (!think->devattrs)
-		return;
-
-	for (i = 0; i < think->settings_count; ++i) {
-		struct dev_ext_attribute *deveattr = &think->devattrs[i];
-		struct device_attribute *devattr = &deveattr->attr;
-
-		if (devattr->attr.name)
-			device_remove_file(&wdev->dev, devattr);
-	}
-	kfree(think->devattrs);
-	think->devattrs = NULL;
-}
-
-static int think_lmi_sysfs_init(struct wmi_device *wdev)
-{
-	struct think_lmi *think = dev_get_drvdata(&wdev->dev);
-	struct dev_ext_attribute *devattrs;
-	int count = think->settings_count;
-	int i, ret;
-
-	devattrs = kzalloc(sizeof(*devattrs) * count, GFP_KERNEL);
-	if (!devattrs)
-		return -ENOMEM;
-	think->devattrs = devattrs;
-
-	for (i = 0; i < count; ++i) {
-		struct dev_ext_attribute *deveattr = &devattrs[i];
-		struct device_attribute *devattr = &deveattr->attr;
-		if (!think->settings[i])
-			continue;
-		sysfs_attr_init(&devattr->attr);
-		devattr->attr.name = think->settings[i];
-		devattr->attr.mode = 0644;
-		devattr->show = show_setting;
-		devattr->store = store_setting;
-		deveattr->var = (void *)(uintptr_t)i;
-		ret = device_create_file(&wdev->dev, devattr);
-		if (ret) {
-			/* Name is used to check is file has been created. */
-			devattr->attr.name = NULL;
-			return ret;
+	for (i = 0; i <= think->settings_count; i++) {
+		if (think->settings[i] != NULL) {
+			if (!strcmp(setting, think->settings[i]))
+					return i;
 		}
 	}
-
-	return sysfs_create_group(&wdev->dev.kobj, &platform_attribute_group);
+	/* No match found - return error condition */
+	return -EINVAL;
 }
 
-/*
- * Platform device
- */
-static int think_lmi_platform_init(struct think_lmi *think)
-{
-	return think_lmi_sysfs_init(think->wmi_device);
-}
-
-static void think_lmi_platform_exit(struct think_lmi *think)
-{
-	think_lmi_sysfs_exit(think->wmi_device);
-}
-
-/* debugfs */
-
-static ssize_t dbgfs_write_argument(struct file *file,
-				    const char __user *userbuf,
-				    size_t count, loff_t *pos)
-{
-	struct think_lmi *think = file->f_path.dentry->d_inode->i_private;
-	char *kernbuf = think->debug.argument;
-	size_t size = sizeof(think->debug.argument);
-
-	if (count > PAGE_SIZE - 1)
-		return -EINVAL;
-
-	if (count > size - 1)
-		return -EINVAL;
-
-	if (copy_from_user(kernbuf, userbuf, count))
-		return -EFAULT;
-
-	kernbuf[count] = 0;
-
-	strim(kernbuf);
-
-	return count;
-}
-
-static int dbgfs_show_argument(struct seq_file *m, void *v)
-{
-	struct think_lmi *think = m->private;
-
-	seq_printf(m, "%s\n", think->debug.argument);
-	return 0;
-}
-
-static int think_lmi_debugfs_argument_open(struct inode *inode,
-					      struct file *file)
-{
-	struct think_lmi *think = inode->i_private;
-
-	return single_open(file, dbgfs_show_argument, think);
-}
-
-static const struct file_operations think_lmi_debugfs_argument_fops = {
-	.open		= think_lmi_debugfs_argument_open,
-	.read		= seq_read,
-	.llseek		= seq_lseek,
-	.release	= single_release,
-	.write		= dbgfs_write_argument,
-};
-
-struct think_lmi_debugfs_node {
-	struct think_lmi *think;
-	char *name;
-	int (*show)(struct seq_file *m, void *data);
-};
-//Lenovo linux utility team
-//Character device open interface
+/* Character device open interface */
 static int think_lmi_chardev_open(struct inode *inode, struct file *file)
 {
 	struct think_lmi *think;
@@ -943,21 +438,7 @@ static int think_lmi_chardev_open(struct inode *inode, struct file *file)
         return THINK_LMI_SUCCESS;
 }
 
-static int validate_setting_name(struct think_lmi *think, char* setting)
-{
-	int i;
-	for (i = 0; i <= think->settings_count; i++) {
-		if (think->settings[i] != NULL) {
-			if (!strcmp(setting, think->settings[i])) {
-					return i;
-			}
-		}
-	}
-	/* No match found - return error condition */
-	return -EINVAL;
-}
-
-//Character device ioctl interface
+/* Character device ioctl interface */
 static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 					unsigned long arg)
 {
@@ -979,7 +460,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			return -EFAULT;
 		break;
 	case THINKLMI_GET_SETTINGS_STRING:
-		/*Get the string for given index*/
+		/* Get the string for given index */
 		if (copy_from_user(settings_str, (void *)arg,
 				   sizeof(settings_str)))
 			return -EFAULT;
@@ -997,7 +478,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 				   sizeof(get_set_string)))
 			return -EFAULT;
 
-		/* First validate that this is a valid setting name*/
+		/* First validate that this is a valid setting name */
 		value = strchr(get_set_string, ',');
 		if (!value) {
 			ret = -EINVAL;
@@ -1026,7 +507,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 
 		ret = think_lmi_save_bios_settings(think->auth_string);
                 if (ret) {
-			/* Try to discard the settings if we failed to apply them. */
+			/* Try to discard the settings if we failed to apply them */
 			think_lmi_discard_bios_settings(think->auth_string);
 			goto error;
                 }
@@ -1037,11 +518,11 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 				   sizeof(get_set_string)))
 			return -EFAULT;
 		item = validate_setting_name(think, get_set_string);
-		if (item < 0) { /*Invalid entry*/
+		if (item < 0) { /* Invalid entry */
 			ret = -EINVAL;
 			goto error;
 		}
-		/*Do a WMI query for the settings */
+		/* Do a WMI query for the settings */
 		ret = think_lmi_setting(item, &settings, LENOVO_BIOS_SETTING_GUID);
 		if (ret)
 			goto error;
@@ -1057,8 +538,9 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 				if (!value)
 					goto error;
 				value++;
-				/*Allocate enough space for value, choices, return chars and 
-				 * null terminate*/
+				/* Allocate enough space for value, choices, return chars and
+				 * null terminate
+				 */
 				tmp_string = (char *)kmalloc(strlen(value) + strlen(choices) + 5, 
 								GFP_KERNEL);
 				count = sprintf(tmp_string, "%s\n", value);
@@ -1066,19 +548,19 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 						choices);
 			}
 		} else {
-			/*BIOS doesn't support choices option - it's all in one string...*/
+			/* BIOS doesn't support choices option - it's all in one string */
 			tmp_string = (char *)kmalloc(strlen(settings) + 3, GFP_KERNEL);
 			count = sprintf(tmp_string, "%s\n", settings);
 		}
 		if (count > TLMI_SETTINGS_MAXLEN) {
-			//Unlikely to happen - but if the string is going to overflow the
-			//amount of space that is available then we need to truncate. 
-			//Issue a warning so we know about these
+			/* Unlikely to happen - but if the string is going to overflow the
+			 * amount of space that is available then we need to truncate.
+			 * Issue a warning so we know about these
+			 */
 			count = TLMI_SETTINGS_MAXLEN;
 			pr_warn("WARNING: Result truncated to fit string buffer\n");
 		}
 		tmp_string[count-1] = '\0';
-		//printk("tmp_string : %s (%ld)\n", tmp_string, count);
 		if (copy_to_user((char *)arg, tmp_string, count)) {
 			kfree(tmp_string);
 			return -EFAULT;
@@ -1102,10 +584,6 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		if (!value)
 			return -EFAULT;
 		snprintf(think->password_kbdlang, TLMI_LANG_MAXLEN, "%s", value);
-
-		//printk("passwd %s\n", think->password);
-		//printk("encoding %s\n", think->password_encoding);
-		//printk("kbd lang %s\n", think->password_kbdlang);
 
 		update_auth_string(think);
 		break;
@@ -1138,12 +616,6 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			return -EFAULT;
 		snprintf(think->password_kbdlang, TLMI_LANG_MAXLEN, "%s",value);
 
-		//printk("passtype %s\n", think->password_type);
-		//printk("old passwd %s\n", think->password);
-		//printk("new passwd %s\n", newpassword);
-		//printk("encoding %s\n", think->password_encoding);
-		//printk("kbd lang %s\n", think->password_kbdlang);
-
 		update_auth_string(think);
 
 	        ret = think_lmi_set_bios_password(settings_str);
@@ -1158,7 +630,6 @@ error:
 	kfree(settings);
 	kfree(choices);
 	return ret ? ret : count;
-
 }
 
 static int think_lmi_chardev_release(struct inode *inode, struct file *file)
@@ -1166,282 +637,11 @@ static int think_lmi_chardev_release(struct inode *inode, struct file *file)
 	return THINK_LMI_SUCCESS;
 }
 
-
 static const struct file_operations think_lmi_chardev_fops = {
 	.open           = think_lmi_chardev_open,
 	.unlocked_ioctl = think_lmi_chardev_ioctl,
 	.release        = think_lmi_chardev_release,
 };
-
-/* --- debugfs utilities ------------------- */
-static void show_bios_setting_line(struct think_lmi *think,
-				   struct seq_file *m, int i, bool list_valid)
-{
-	int ret;
-	char *settings = NULL, *choices = NULL, *p;
-
-	ret = think_lmi_setting(i, &settings, LENOVO_BIOS_SETTING_GUID);
-	if (ret || !settings)
-		return;
-
-	p = strchr(settings, ',');
-	if (p)
-		*p = '=';
-	seq_printf(m, "%s", settings);
-
-	if (!think->can_get_bios_selections)
-		goto line_feed;
-
-	if (p)
-		*p = '\0';
-
-	ret = think_lmi_get_bios_selections(settings, &choices);
-	if (ret || !choices || !*choices)
-		goto line_feed;
-
-	seq_printf(m, "\t[%s]", choices);
-
-line_feed:
-	kfree(settings);
-	if (choices)
-		kfree(choices);
-	seq_puts(m, "\n");
-}
-
-static void show_platform_setting_line(struct think_lmi *think,
-				   struct seq_file *m, int i, bool list_valid)
-{
-	int ret;
-	char *settings = NULL, *p;
-
-	ret = think_lmi_setting(i, &settings, LENOVO_PLATFORM_SETTING_GUID);
-	if (ret || !settings)
-		return;
-
-	p = strchr(settings, ',');
-	if (p)
-		*p = '=';
-	seq_printf(m, "%s", settings);
-
-	kfree(settings);
-	seq_puts(m, "\n");
-}
-
-static int dbgfs_bios_settings(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-	int i;
-
-	for (i = 0; i < think->settings_count; ++i)
-		show_bios_setting_line(think, m, i, true);
-
-	return 0;
-}
-
-static int dbgfs_platform_settings(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-	int i;
-
-	for (i = 0; i < think->settings_count; ++i)
-		show_platform_setting_line(think, m, i, true);
-
-	return 0;
-}
-
-static int dbgfs_bios_setting(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-
-	show_bios_setting_line(m->private, m, think->debug.instance, false);
-	return 0;
-}
-
-static int dbgfs_list_valid_choices(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-	char *choices = NULL;
-	int ret;
-
-	ret = think_lmi_get_bios_selections(think->debug.argument,
-					       &choices);
-
-	if (ret || !choices || !*choices) {
-		if (choices)
-			kfree(choices);
-		return -EIO;
-	}
-
-	seq_printf(m, "%s\n", choices);
-	kfree(choices);
-	return 0;
-}
-
-static int dbgfs_set_bios_settings(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-
-	return think_lmi_set_bios_settings(think->debug.argument);
-}
-
-static int dbgfs_set_platform_settings(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-
-	return think_lmi_set_platform_settings(think->debug.argument);
-}
-
-static int dbgfs_save_bios_settings(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-
-	return think_lmi_save_bios_settings(think->debug.argument);
-}
-
-static int dbgfs_discard_bios_settings(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-
-	return think_lmi_discard_bios_settings(think->debug.argument);
-}
-
-static int dbgfs_load_default(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-
-	return think_lmi_load_default(think->debug.argument);
-}
-
-#if 0 /*TO BE FIXED*/
-static int dbgfs_set_bios_password(struct seq_file *m, void *data)
-{
-	struct think_lmi *think = m->private;
-
-	return think_lmi_set_bios_password(think->debug.argument);
-}
-#endif
-
-static int dbgfs_bios_password_settings(struct seq_file *m, void *data)
-{
-	struct think_lmi_pcfg pcfg;
-	int ret;
-
-	ret = think_lmi_password_settings(&pcfg);
-	if (ret)
-		return ret;
-	seq_printf(m, "password_mode:       %#x\n", pcfg.password_mode);
-	seq_printf(m, "password_state:      %#x\n", pcfg.password_state);
-	seq_printf(m, "min_length:          %d\n", pcfg.min_length);
-	seq_printf(m, "max_length:          %d\n", pcfg.max_length);
-	seq_printf(m, "supported_encodings: %#x\n", pcfg.supported_encodings);
-	seq_printf(m, "supported_keyboard:  %#x\n", pcfg.supported_keyboard);
-	return 0;
-}
-
-static struct think_lmi_debugfs_node think_lmi_debug_files[] = {
-	{ NULL, "bios_settings", dbgfs_bios_settings },
-	{ NULL, "bios_setting", dbgfs_bios_setting },
-	{ NULL, "list_valid_choices", dbgfs_list_valid_choices },
-	{ NULL, "set_bios_settings", dbgfs_set_bios_settings },
-	{ NULL, "save_bios_settings", dbgfs_save_bios_settings },
-	{ NULL, "discard_bios_settings", dbgfs_discard_bios_settings },
-	{ NULL, "load_default", dbgfs_load_default },
-#if 0 /*TO BE FIXED*/
-	{ NULL, "set_bios_password", dbgfs_set_bios_password },
-#endif
-	{ NULL, "bios_password_settings", dbgfs_bios_password_settings },
-	{ NULL, "platform_settings", dbgfs_platform_settings },
-	{ NULL, "set_platform_settings", dbgfs_set_platform_settings },
-};
-
-static int think_lmi_debugfs_open(struct inode *inode, struct file *file)
-{
-	struct think_lmi_debugfs_node *node = inode->i_private;
-
-	return single_open(file, node->show, node->think);
-}
-
-static const struct file_operations think_lmi_debugfs_io_ops = {
-	.owner = THIS_MODULE,
-	.open  = think_lmi_debugfs_open,
-	.read = seq_read,
-	.llseek = seq_lseek,
-	.release = single_release,
-};
-
-static void think_lmi_debugfs_exit(struct think_lmi *think)
-{
-	debugfs_remove_recursive(think->debug.root);
-}
-
-static int think_lmi_debugfs_init(struct think_lmi *think)
-{
-	struct dentry *dent;
-	int i;
-
-	think->debug.instances_count = think->settings_count;
-
-	think->debug.root = debugfs_create_dir(THINK_LMI_FILE, NULL);
-	if (!think->debug.root) {
-		pr_err("failed to create debugfs directory");
-		goto error_debugfs;
-	}
-
-	dent = debugfs_create_file("argument", S_IRUGO | S_IWUSR,
-				   think->debug.root, think,
-				   &think_lmi_debugfs_argument_fops);
-	if (!dent)
-		goto error_debugfs;
-
-	debugfs_create_u8("instance", 0644, think->debug.root,
-				 &think->debug.instance);
-
-	debugfs_create_u8("instances_count", 0444, think->debug.root,
-				 &think->debug.instances_count);
-
-	for (i = 0; i < ARRAY_SIZE(think_lmi_debug_files); i++) {
-		struct think_lmi_debugfs_node *node;
-
-		node = &think_lmi_debug_files[i];
-
-		/* Filter non-present interfaces */
-		if (!strcmp(node->name, "set_bios_settings") &&
-		    !think->can_set_bios_settings)
-			continue;
-		if (!strcmp(node->name, "dicard_bios_settings") &&
-		    !think->can_discard_bios_settings)
-			continue;
-		if (!strcmp(node->name, "load_default_settings") &&
-		    !think->can_load_default_settings)
-			continue;
-		if (!strcmp(node->name, "get_bios_selections") &&
-		    !think->can_get_bios_selections)
-			continue;
-		if (!strcmp(node->name, "set_bios_password") &&
-		    !think->can_set_bios_password)
-			continue;
-		if (!strcmp(node->name, "bios_password_settings") &&
-		    !think->can_get_password_settings)
-			continue;
-
-		node->think = think;
-		dent = debugfs_create_file(node->name, S_IFREG | S_IRUGO,
-					   think->debug.root, node,
-					   &think_lmi_debugfs_io_ops);
-		if (!dent) {
-			pr_err("failed to create debug file: %s\n", node->name);
-			goto error_debugfs;
-		}
-	}
-
-	return 0;
-
-error_debugfs:
-	think_lmi_debugfs_exit(think);
-	return -ENOMEM;
-}
-
-/* ---------------------- */
 
 static void think_lmi_chardev_initialize(struct think_lmi *think)
 {
@@ -1485,17 +685,17 @@ static void think_lmi_chardev_exit(struct think_lmi *think)
 	class_destroy(tlmi_class);
 	cdev_del(&think->c_dev);
 	unregister_chrdev_region(tlmi_dev, TLMI_NUM_DEVICES);
-
 }
 
-/* Base driver */
 static void think_lmi_analyze(struct think_lmi *think)
 {
 	acpi_status status;
 	int i = 0;
 
-	/* Try to find the number of valid settings of this machine
-	 * and use it to create sysfs attributes */
+	/*
+	 * Try to find the number of valid settings of this machine
+	 * and use it to create sysfs attributes
+	 */
 	for (i = 0; i < 0xFF; ++i) {
 		char *item = NULL;
 		int spleng = 0;
@@ -1513,9 +713,8 @@ static void think_lmi_analyze(struct think_lmi *think)
 		/* It is not allowed to have '/' for file name. Convert it into '\'. */
 		spleng = strlen(item);
 		for (num = 0; num < spleng; num++) {
-			if (item[num] == '/') {
+			if (item[num] == '/')
 				item[num] = '\\';
-			}
 		}
 
 		/* Remove the value part */
@@ -1526,11 +725,9 @@ static void think_lmi_analyze(struct think_lmi *think)
 		think->settings_count++;
 	}
 
-	//pr_info("Found %d settings", think->settings_count);
 	if (wmi_has_guid(LENOVO_SET_BIOS_SETTINGS_GUID) &&
-	    wmi_has_guid(LENOVO_SAVE_BIOS_SETTINGS_GUID)) {
+	    wmi_has_guid(LENOVO_SAVE_BIOS_SETTINGS_GUID))
 		think->can_set_bios_settings = true;
-	}
 
 	if (wmi_has_guid(LENOVO_DISCARD_BIOS_SETTINGS_GUID))
 		think->can_discard_bios_settings = true;
@@ -1551,7 +748,6 @@ static void think_lmi_analyze(struct think_lmi *think)
 static int think_lmi_add(struct wmi_device *wdev)
 {
 	struct think_lmi *think;
-	int err;
 
 	think = kzalloc(sizeof(struct think_lmi), GFP_KERNEL);
 	if (!think)
@@ -1563,22 +759,7 @@ static int think_lmi_add(struct wmi_device *wdev)
 	think_lmi_chardev_initialize(think);
 
 	think_lmi_analyze(think);
-
-	err = think_lmi_platform_init(think);
-	if (err)
-		goto error_platform;
-
-	err = think_lmi_debugfs_init(think);
-	if (err)
-		goto error_debugfs;
-
 	return 0;
-
-error_debugfs:
-	think_lmi_platform_exit(think);
-error_platform:
-	kfree(think);
-	return err;
 }
 
 static int think_lmi_remove(struct wmi_device *wdev)
@@ -1587,8 +768,6 @@ static int think_lmi_remove(struct wmi_device *wdev)
 	int i;
 
 	think = dev_get_drvdata(&wdev->dev);
-	think_lmi_debugfs_exit(think);
-	think_lmi_platform_exit(think);
 	think_lmi_chardev_exit(think);
 
 	for (i = 0; think->settings[i]; ++i) {
@@ -1610,7 +789,7 @@ static int think_lmi_probe(struct wmi_device *wdev)
 }
 
 static const struct wmi_device_id think_lmi_id_table[] = {
-	// Search for Lenovo_BiosSetting
+	/* Search for Lenovo_BiosSetting */
 	{ .guid_string = LENOVO_BIOS_SETTING_GUID },
 	{ },
 };
