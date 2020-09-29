@@ -16,10 +16,11 @@
  *
  *  You should have received a copy of the GNU General Public License
  *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
  *
- *  Original code from Thinkpad-wmi project https://github.com/iksaif/thinkpad-wmi
- *  Copyright(C) 2017 Corentin Chary <corentin.chary@gmail.com> 
+ *  Original code from Thinkpad-wmi project
+ *  https://github.com/iksaif/thinkpad-wmi
+ *  Copyright(C) 2017 Corentin Chary <corentin.chary@gmail.com>
  *  Distributed under the GPL-2.0 license
  */
 
@@ -51,7 +52,7 @@ MODULE_AUTHOR("Corentin Chary <corentin.chary@gmail.com>");
 MODULE_DESCRIPTION("Think LMI Driver");
 MODULE_LICENSE("GPL");
 
-/* LMI inteface */
+/* LMI interface */
 
 /**
  * Name:
@@ -72,10 +73,12 @@ MODULE_LICENSE("GPL");
  * Name:
  *  Lenovo_SetBiosSetting
  * Description:
- *  Change the BIOS setting to the desired value using the Lenovo_SetBiosSetting
- *  class. To save the settings, use the Lenovo_SaveBiosSetting class.
+ *  Change the BIOS setting to the desired value using the
+ *  Lenovo_SetBiosSetting class. To save the settings,
+ *  use the Lenovo_SaveBiosSetting class.
  *  BIOS settings and values are case sensitive.
- *  After making changes to the BIOS settings, you must reboot the computer
+ *  After making changes to the BIOS settings,
+ *  you must reboot the computer
  *  before the changes will take effect.
  * Type:
  *  Method
@@ -155,8 +158,8 @@ MODULE_LICENSE("GPL");
  *  Change a specific password.
  *  - BIOS settings cannot be changed at the same boot as power-on
  *    passwords (POP) and hard disk passwords (HDP). If you want to change
- *    BIOS settings and POP or HDP, you must reboot the system after changing
- *    one of them.
+ *    BIOS settings and POP or HDP, you must reboot the system after
+ *    changing one of them.
  *  - A password cannot be set using this method when one does not already
  *    exist. Passwords can only be updated or cleared.
  * Type:
@@ -264,7 +267,8 @@ struct think_lmi {
 	char password[TLMI_PWD_MAXLEN];
 	char password_encoding[TLMI_ENC_MAXLEN];
 	char password_kbdlang[TLMI_LANG_MAXLEN]; /* 2 bytes for \n\0 */
-	char auth_string[TLMI_PWD_MAXLEN + TLMI_ENC_MAXLEN + TLMI_LANG_MAXLEN + 2]; 
+	char auth_string[TLMI_PWD_MAXLEN + TLMI_ENC_MAXLEN
+		                      + TLMI_LANG_MAXLEN + 2];
 	char password_type[TLMI_PWDTYPE_MAXLEN];
 
 	bool can_set_bios_settings;
@@ -334,8 +338,8 @@ static int think_lmi_simple_call(const char *guid,
 	return think_lmi_extract_error(&output);
 }
 
-static int think_lmi_extract_output_string(const struct acpi_buffer *output,
-					      char **string)
+static int think_lmi_extract_output_string(const struct acpi_buffer
+		                     *output,  char **string)
 {
 	const union acpi_object *obj;
 
@@ -348,7 +352,8 @@ static int think_lmi_extract_output_string(const struct acpi_buffer *output,
 	return *string ? 0 : -ENOMEM;
 }
 
-static int think_lmi_setting(int item, char **value, const char *guid_string)
+static int think_lmi_setting(int item, char **value,
+		                  const char *guid_string)
 {
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	acpi_status status;
@@ -377,22 +382,26 @@ static int think_lmi_get_bios_selections(const char *item, char **value)
 
 static int think_lmi_set_bios_settings(const char *settings)
 {
-	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID, settings);
+	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID,
+		                        settings);
 }
 
 static int think_lmi_save_bios_settings(const char *password)
 {
-	return think_lmi_simple_call(LENOVO_SAVE_BIOS_SETTINGS_GUID, password);
+	return think_lmi_simple_call(LENOVO_SAVE_BIOS_SETTINGS_GUID,
+		                        password);
 }
 
 static int think_lmi_discard_bios_settings(const char *password)
 {
-	return think_lmi_simple_call(LENOVO_DISCARD_BIOS_SETTINGS_GUID,	password);
+	return think_lmi_simple_call(LENOVO_DISCARD_BIOS_SETTINGS_GUID,
+			                 password);
 }
 
 static int think_lmi_set_bios_password(const char *settings)
 {
-	return think_lmi_simple_call(LENOVO_SET_BIOS_PASSWORD_GUID, settings);
+	return think_lmi_simple_call(LENOVO_SET_BIOS_PASSWORD_GUID,
+		                        settings);
 }
 
 /* Create the auth string from password chunks */
@@ -485,7 +494,8 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			goto error;
 		}
 		tmp_string = kmalloc(value - get_set_string + 1, GFP_KERNEL);
-		snprintf(tmp_string, value - get_set_string + 1, "%s", get_set_string);
+		snprintf(tmp_string, value - get_set_string + 1, "%s",
+			                get_set_string);
 		ret = validate_setting_name(think, tmp_string);
 		kfree(tmp_string);
 		if (ret < 0) 
@@ -493,9 +503,11 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 
 		/* If authorisation required add that to command */
 		if (*think->auth_string) {
-			count = strlen(get_set_string) + strlen(think->auth_string) + 2;
+			count = strlen(get_set_string) +
+				strlen(think->auth_string) + 2;
 			tmp_string = kmalloc(count, GFP_KERNEL);
-			snprintf(tmp_string, count, "%s,%s;", get_set_string, think->auth_string);
+			snprintf(tmp_string, count, "%s,%s;",
+					get_set_string, think->auth_string);
 		} else {
 			count =  strlen(get_set_string) + 1;
 			tmp_string = kmalloc(count, GFP_KERNEL);
@@ -507,8 +519,10 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 
 		ret = think_lmi_save_bios_settings(think->auth_string);
                 if (ret) {
-			/* Try to discard the settings if we failed to apply them */
-			think_lmi_discard_bios_settings(think->auth_string);
+			/* Try to discard the settings
+			 * if we failed to apply them */
+			think_lmi_discard_bios_settings(think->
+					         auth_string);
 			goto error;
                 }
 		break;
@@ -523,7 +537,8 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			goto error;
 		}
 		/* Do a WMI query for the settings */
-		ret = think_lmi_setting(item, &settings, LENOVO_BIOS_SETTING_GUID);
+		ret = think_lmi_setting(item, &settings,
+				          LENOVO_BIOS_SETTING_GUID);
 		if (ret)
 			goto error;
 
@@ -538,23 +553,28 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 				if (!value)
 					goto error;
 				value++;
-				/* Allocate enough space for value, choices, return chars and
+				/* Allocate enough space for value,
+				 * choices, return chars and
 				 * null terminate
 				 */
-				tmp_string = (char *)kmalloc(strlen(value) + strlen(choices) + 5, 
-								GFP_KERNEL);
+				tmp_string = (char *)kmalloc(strlen(value)
+					        + strlen(choices) + 5,
+						      GFP_KERNEL);
 				count = sprintf(tmp_string, "%s\n", value);
-				count += sprintf(tmp_string + count, "%s\n",
-						choices);
+				count += sprintf(tmp_string + count,
+						"%s\n",	choices);
 			}
 		} else {
-			/* BIOS doesn't support choices option - it's all in one string */
-			tmp_string = (char *)kmalloc(strlen(settings) + 3, GFP_KERNEL);
+			/* BIOS doesn't support choices
+			 * option - it's all in one string */
+			tmp_string = (char *)kmalloc(strlen(settings)
+				           + 3, GFP_KERNEL);
 			count = sprintf(tmp_string, "%s\n", settings);
 		}
 		if (count > TLMI_SETTINGS_MAXLEN) {
-			/* Unlikely to happen - but if the string is going to overflow the
-			 * amount of space that is available then we need to truncate.
+			/* Unlikely to happen - but if the string is going
+			 * to overflow the amount of space that is
+			 * available then we need to truncate.
 			 * Issue a warning so we know about these
 			 */
 			count = TLMI_SETTINGS_MAXLEN;
@@ -579,11 +599,13 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
                 value = strsep(&tmp_string, ",");
 		if (!value)
 			return -EFAULT;
-		snprintf(think->password_encoding, TLMI_ENC_MAXLEN, "%s", value);
+		snprintf(think->password_encoding, TLMI_ENC_MAXLEN,
+			                     "%s", value);
                 value = strsep(&tmp_string, ",");
 		if (!value)
 			return -EFAULT;
-		snprintf(think->password_kbdlang, TLMI_LANG_MAXLEN, "%s", value);
+		snprintf(think->password_kbdlang, TLMI_LANG_MAXLEN,
+			                      "%s", value);
 
 		update_auth_string(think);
 		break;
@@ -592,13 +614,15 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		if (copy_from_user(get_set_string, (void *)arg,
 				   sizeof(get_set_string)))
 			return -EFAULT;
-		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s",get_set_string);
+		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s",
+				             get_set_string);
 		tmp_string = get_set_string;
 
                 value = strsep(&tmp_string, ",");
 		if (!value)
 			return -EFAULT;
-		snprintf(think->password_type, TLMI_PWDTYPE_MAXLEN, "%s",value);
+		snprintf(think->password_type, TLMI_PWDTYPE_MAXLEN,
+			                   "%s",value);
                 value = strsep(&tmp_string, ",");
 		if (!value)
 			return -EFAULT;
@@ -610,11 +634,13 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		value = strsep(&tmp_string, ",");
 		if (!value)
 			return -EFAULT;
-		snprintf(think->password_encoding, TLMI_ENC_MAXLEN, "%s",value);
+		snprintf(think->password_encoding, TLMI_ENC_MAXLEN,
+			                    "%s",value);
                 value = strsep(&tmp_string, ",");
 		if (!value)
 			return -EFAULT;
-		snprintf(think->password_kbdlang, TLMI_LANG_MAXLEN, "%s",value);
+		snprintf(think->password_kbdlang, TLMI_LANG_MAXLEN,
+			                     "%s",value);
 
 		update_auth_string(think);
 
@@ -632,7 +658,8 @@ error:
 	return ret ? ret : count;
 }
 
-static int think_lmi_chardev_release(struct inode *inode, struct file *file)
+static int think_lmi_chardev_release(struct inode *inode,
+	                    struct file *file)
 {
 	return THINK_LMI_SUCCESS;
 }
@@ -648,7 +675,8 @@ static void think_lmi_chardev_initialize(struct think_lmi *think)
         int ret;
 	struct device *dev_ret;
 
-	ret = alloc_chrdev_region(&tlmi_dev, 0, TLMI_NUM_DEVICES, TLMI_NAME);
+	ret = alloc_chrdev_region(&tlmi_dev, 0, TLMI_NUM_DEVICES,
+		                             TLMI_NAME);
 	if (ret < 0) {
 		pr_warn("tlmi: char dev allocation failed\n");
 		return;
@@ -670,7 +698,8 @@ static void think_lmi_chardev_initialize(struct think_lmi *think)
 		unregister_chrdev_region(tlmi_dev, TLMI_NUM_DEVICES);
 		return;
         }
-	dev_ret = device_create(tlmi_class, NULL, tlmi_dev, NULL, "thinklmi");
+	dev_ret = device_create(tlmi_class, NULL, tlmi_dev,
+		                    NULL, "thinklmi");
 	if (IS_ERR(dev_ret)) {
 		pr_warn("tlmi: char dev device creation failed\n");
 		class_destroy(tlmi_class);
@@ -702,7 +731,8 @@ static void think_lmi_analyze(struct think_lmi *think)
 		int num = 0;
 		char *p;
 
-		status = think_lmi_setting(i, &item, LENOVO_BIOS_SETTING_GUID);
+		status = think_lmi_setting(i, &item,
+			        LENOVO_BIOS_SETTING_GUID);
 		if (ACPI_FAILURE(status))
 			break;
 		if (!item )
@@ -710,7 +740,8 @@ static void think_lmi_analyze(struct think_lmi *think)
 		if (!*item)
 			continue;
 
-		/* It is not allowed to have '/' for file name. Convert it into '\'. */
+		/* It is not allowed to have '/' for file name.
+		 * Convert it into '\'. */
 		spleng = strlen(item);
 		for (num = 0; num < spleng; num++) {
 			if (item[num] == '/')
