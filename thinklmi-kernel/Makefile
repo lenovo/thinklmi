@@ -14,6 +14,7 @@ clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
 
 modules_install:
+	$(INSTALL) -d /lib/modules/$(KERNELRELEASE)/extra/
 	$(INSTALL) -m 644 think-lmi.ko /lib/modules/$(KERNELRELEASE)/extra/
 
 install: modules_install
