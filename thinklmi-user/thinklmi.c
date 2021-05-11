@@ -33,17 +33,20 @@
 void get_settings_all(int fd)
 {
     int i, settings_count;
-    char settings_str[TLMI_SETTINGS_MAXLEN];
+    unsigned char settings_str[TLMI_SETTINGS_MAXLEN];
 
     if (ioctl(fd, THINKLMI_GET_SETTINGS, &settings_count) == -1) {
         perror("query_apps ioctl get");
     } else {
-	//printf("Total settings: %d\n", settings_count);
-	for(i=0; i < settings_count; i++)
+	printf("Total settings: %d\n", settings_count);
+	for(i=0; i <= settings_count; i++)
 	{
 		settings_str[0] = i;
+                
                 if (ioctl(fd, THINKLMI_GET_SETTINGS_STRING, &settings_str) >= 0)
 			printf("%3.3d: %s\n", i, settings_str);
+                /*else
+			printf("%3.3d:\n", i);*/
 	}
     }
 }

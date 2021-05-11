@@ -278,7 +278,7 @@ struct think_lmi {
 	bool can_set_bios_password;
 	bool can_get_password_settings;
 
-	char *settings[256];
+	unsigned char *settings[256];
 	struct dev_ext_attribute *devattrs;
 	struct cdev c_dev;
 };
@@ -453,7 +453,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 {
         struct think_lmi *think;
 	int j,ret,item;
-	char settings_str[TLMI_SETTINGS_MAXLEN];
+	unsigned char settings_str[TLMI_SETTINGS_MAXLEN];
 	char get_set_string[TLMI_GETSET_MAXLEN];
 	char newpassword[TLMI_PWD_MAXLEN];
 	char *settings = NULL, *choices = NULL;
