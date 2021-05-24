@@ -329,6 +329,7 @@ static int think_lmi_simple_call(const char *guid,
 	 * duplicated call required to match bios workaround for behavior
 	 * seen when WMI accessed via scripting on other OS
 	 */
+
 	status = wmi_evaluate_method(guid, 0, 0, &input, &output);
 	status = wmi_evaluate_method(guid, 0, 0, &input, &output);
 
@@ -404,6 +405,11 @@ static int think_lmi_set_bios_password(const char *settings)
 		                        settings);
 }
 
+static int think_lmi_set_platform_settings(const char *settings)
+{
+	return think_lmi_simple_call(LENOVO_SET_PLATFORM_SETTINGS_GUID,
+		                        settings);
+}
 /* Create the auth string from password chunks */
 static void update_auth_string(struct think_lmi *think)
 {
@@ -646,9 +652,23 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 
 	        ret = think_lmi_set_bios_password(settings_str);
 		break;
+
+	case THINKLMI_DEBUG:
+		if (copy_from_user(get_set_string, (void *)arg,
+				   sizeof(get_set_string)))
+			return -EFAULT;
+		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s",
+				             get_set_string);
+
+		ret = think_lmi_set_platform_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+		break;
 	default:
 		return -EINVAL;
 	}
+
 
 	return THINK_LMI_SUCCESS;
 

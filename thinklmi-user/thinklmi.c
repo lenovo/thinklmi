@@ -104,15 +104,29 @@ void thinklmi_change_password(int fd, char *oldpass, char *newpass, char *passty
 	}
 }
 
+void thinklmi_debug(int fd, char *settingname, char *value)
+{
+	char setting_string[TLMI_GETSET_MAXLEN];
+        strncpy(setting_string, settingname, TLMI_SETTINGS_MAXLEN);
+	strcat(setting_string, ",");
+	strncat(setting_string, value, TLMI_SETTINGS_MAXLEN);
+	if(ioctl(fd, THINKLMI_DEBUG, &setting_string) == -1) {
+	   perror("Debug Setting Error");
+	} else {
+	   printf("Debug Setting changed\n");
+	}
+}
+
 static void show_usage(void)
 {
-	fprintf(stdout, "Usage: thinklmi [-g | -s | -p | -c | getsettings] <options>\n");
+	fprintf(stdout, "Usage: thinklmi [-g | -s | -p | -c | -d | getsettings] <options>\n");
 	fprintf(stdout, "Option details:  \n");
 	fprintf(stdout, "\t getsettings - display all available BIOS options:  \n");
 	fprintf(stdout, "\t -g [BIOS option] - Get the current setting and choices for given BIOS option\n");
 	fprintf(stdout, "\t -s [BIOS option] [value] - Set the given BIOS option to given value\n");
 	fprintf(stdout, "\t -p [password] [encoding] [kbdlang] - Set authentication details. \n");
 	fprintf(stdout, "\t -c [password] [new password] [password type] [encoding] [kbdlang] - Change password. \n");
+	fprintf(stdout, "\t -d [debug setting] [option]\n");
 	fprintf(stdout, "Notes:  \n");
 	fprintf(stdout, "\t password type can be \"pap\" or \"pop\" \n");
 	fprintf(stdout, "\t encoding can be \"ascii\" or \"scancode\" \n");
@@ -129,7 +143,8 @@ int main(int argc, char *argv[])
 	get,
 	set,
 	authenticate,
-	change_password
+	change_password,
+	debug
     } option;
 
     if (getuid()!=0) {
@@ -155,8 +170,13 @@ int main(int argc, char *argv[])
 	    case 4:
 		    if (strcmp(argv[1], "-s") == 0) {
 			    option = set;
-			    //printf("%s %s \n", argv[2], argv[3]);
-		    } else 
+			    printf("%s %s \n", argv[2], argv[3]);
+		    } else
+
+	            if (strcmp(argv[1], "-d") == 0) {
+				  option = debug;
+			    printf("%s %s \n", argv[2], argv[3]);
+		    } else
 			    show_usage();
 		    break;
 	    case 5:
@@ -196,6 +216,9 @@ int main(int argc, char *argv[])
 		    break;
 	    case change_password:
 		    thinklmi_change_password(fd, argv[2], argv[3], argv[4], argv[5], argv[6]);
+		    break;
+	    case debug:
+		    thinklmi_debug(fd, argv[2], argv[3]);
 		    break;
     }
     close (fd);

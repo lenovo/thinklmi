@@ -22,6 +22,7 @@
 #define THINKLMI_SHOW_SETTING _IOWR('T', 4, char *)
 #define THINKLMI_AUTHENTICATE _IOW('T', 5, char *)
 #define THINKLMI_CHANGE_PASSWORD _IOW('T', 6, char *)
+#define THINKLMI_DEBUG _IOW('T',7, char *)
 
 #endif /* !_THINK_LMI_H_ */
 
