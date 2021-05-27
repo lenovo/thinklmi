@@ -170,12 +170,10 @@ int main(int argc, char *argv[])
 	    case 4:
 		    if (strcmp(argv[1], "-s") == 0) {
 			    option = set;
-			    printf("%s %s \n", argv[2], argv[3]);
 		    } else
 
 	            if (strcmp(argv[1], "-d") == 0) {
-				  option = debug;
-			    printf("%s %s \n", argv[2], argv[3]);
+		            option = debug;
 		    } else
 			    show_usage();
 		    break;
