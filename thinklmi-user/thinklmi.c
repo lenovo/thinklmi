@@ -117,9 +117,73 @@ void thinklmi_debug(int fd, char *settingname, char *value)
 	}
 }
 
+void thinklmi_lmiopcode(int fd, char *admin, char *passtype, char *oldpass, char *newpass )
+{
+	char setting_string[TLMI_GETSET_MAXLEN];
+	snprintf(setting_string, TLMI_GETSET_MAXLEN, "%s,%s,%s,%s;", admin, passtype, oldpass, newpass);
+        if(ioctl(fd, THINKLMI_LMIOPCODE, &setting_string) == -1) {
+	   perror("BIOS password change failed");
+	} else {
+	   printf("BIOS password changed\n");
+           printf("Setting will not change until reboot\n");
+	}
+}
+
+void thinklmi_lmiopcode_nopap(int fd, char *passtype, char *oldpass, char *newpass )
+{
+	char setting_string[TLMI_GETSET_MAXLEN];
+	snprintf(setting_string, TLMI_GETSET_MAXLEN, "%s,%s,%s;", passtype, oldpass, newpass);
+        if(ioctl(fd, THINKLMI_LMIOPCODE_NOPAP, &setting_string) == -1) {
+	   perror("BIOS password change failed");
+	} else {
+	   printf("BIOS password changed\n");
+           printf("Setting will not change until reboot\n");
+	}
+}
+void thinklmi_tpmtype(int fd, char *tpmtype)
+{
+	char setting_string[TLMI_GETSET_MAXLEN];
+        snprintf(setting_string, TLMI_GETSET_MAXLEN, "%s;", tpmtype);
+        if(ioctl(fd, THINKLMI_TPMTYPE, &setting_string) == -1) {
+           perror("Tpm type change failed");
+        } else {
+           printf("Tpm type changed\n");
+           printf("Setting will not change until reboot\n");
+        }
+
+}
+
+void thinklmi_load_default(int fd)
+{
+	if(ioctl(fd, THINKLMI_LOAD_DEFAULT) == -1) {
+	   perror(" Error loading Default Settings\n");
+	} else {
+	   printf("Default Settings Loaded\n");
+	}
+}
+
+
+void thinklmi_save_settings(int fd)
+{
+	if(ioctl(fd, THINKLMI_SAVE_SETTINGS) == -1) {
+	   perror(" Error saving Settings\n");
+	} else {
+	   printf("Settings saved\n");
+	}
+}
+
+void thinklmi_discard_settings(int fd)
+{
+	if(ioctl(fd, THINKLMI_DISCARD_SETTINGS) == -1) {
+	   perror(" Error discarding Settings\n");
+	} else {
+	   printf("Settings Discarded\n");
+	}
+}
+
 static void show_usage(void)
 {
-	fprintf(stdout, "Usage: thinklmi [-g | -s | -p | -c | -d | getsettings] <options>\n");
+	fprintf(stdout, "Usage: thinklmi [-g | -s | -p | -c | -d | -l | -w | getsettings| save settings | discard settings] <options>\n");
 	fprintf(stdout, "Option details:  \n");
 	fprintf(stdout, "\t getsettings - display all available BIOS options:  \n");
 	fprintf(stdout, "\t -g [BIOS option] - Get the current setting and choices for given BIOS option\n");
@@ -127,6 +191,12 @@ static void show_usage(void)
 	fprintf(stdout, "\t -p [password] [encoding] [kbdlang] - Set authentication details. \n");
 	fprintf(stdout, "\t -c [password] [new password] [password type] [encoding] [kbdlang] - Change password. \n");
 	fprintf(stdout, "\t -d [debug setting] [option]\n");
+	fprintf(stdout, "\t -l load default settings\n");
+	fprintf(stdout, "\t -w [Admin password] [password type] [current password] [new password] - Change password using lmiopcode. \n");
+	fprintf(stdout, "\t -w [password type] [current password] [new password] - Change password using lmiopcode, no Admin password set. \n");
+	fprintf(stdout, "\t -t [tpm type] - Change tpm type\n");
+	fprintf(stdout, "\t save settings - save BIOS settings \n");
+	fprintf(stdout, "\t discard settings - discard loaded settings \n");
 	fprintf(stdout, "Notes:  \n");
 	fprintf(stdout, "\t password type can be \"pap\" or \"pop\" \n");
 	fprintf(stdout, "\t encoding can be \"ascii\" or \"scancode\" \n");
@@ -144,7 +214,13 @@ int main(int argc, char *argv[])
 	set,
 	authenticate,
 	change_password,
-	debug
+	debug,
+	lmiopcode,
+	lmiopcode_nopap,
+	tpmtype,
+	load_default,
+	save_settings,
+	discard_settings
     } option;
 
     if (getuid()!=0) {
@@ -153,17 +229,34 @@ int main(int argc, char *argv[])
     }
     switch(argc)
     {
+
 	    case 2:
-		    if (strcmp(argv[1], "getsettings") == 0) {
+		    if (strcmp(argv[1], "getsettings") == 0)
 			    option = get_settings;
-		    } else {
+		    else
+
+	            if (strcmp(argv[1], "-l") == 0)
+		            option = load_default;
+		    else
 			    show_usage();
-			    return 1;
-		    }
 		    break;
 	    case 3:
 		    if (strcmp(argv[1], "-g") == 0)
 			    option = get;
+		    else
+
+	            if (strcmp(argv[1], "save") == 0)
+			    option = save_settings;
+		    else
+
+	            if (strcmp(argv[1], "discard") == 0)
+			    option = discard_settings;
+
+		    else
+
+		    if (strcmp(argv[1], "-t") == 0)
+			    option = tpmtype;
+
 		    else
 			    show_usage();
 		    break;
@@ -181,14 +274,39 @@ int main(int argc, char *argv[])
 		    if (strcmp(argv[1], "-p") == 0)
 			    option = authenticate;
 		    else
+
+		    if (strcmp(argv[1], "-w") == 0)
+		            option = lmiopcode_nopap;
+
+		    else
+			    show_usage();
+		    break;
+	    case 6:
+
+                    if (strcmp(argv[1], "-w") == 0)
+                            option = lmiopcode;
+		    else
 			    show_usage();
 		    break;
 	    case 7:
 		    if (strcmp(argv[1], "-c") == 0)
 			    option = change_password;
+	            else
+			    show_usage();
+		    break;
+	    case 8:
+		    if (strcmp(argv[1], "-l") == 0)
+			    option = load_default;
 		    else
 			    show_usage();
 		    break;
+	    case 9:
+		    if (strcmp(argv[1], "discard settings") == 0)
+			    option = discard_settings;
+		    else
+			    show_usage();
+		    break;
+
 	    default:
 		    show_usage();
 		    return 1;
@@ -217,6 +335,24 @@ int main(int argc, char *argv[])
 		    break;
 	    case debug:
 		    thinklmi_debug(fd, argv[2], argv[3]);
+		    break;
+	    case lmiopcode:
+		    thinklmi_lmiopcode(fd, argv[2], argv[3], argv[4], argv[5]);
+		    break;
+	    case lmiopcode_nopap:
+		    thinklmi_lmiopcode_nopap(fd, argv[2], argv[3], argv[4]);
+		    break;
+	    case tpmtype:
+		    thinklmi_tpmtype(fd, argv[2]);
+		    break;
+	    case load_default:
+		    thinklmi_load_default(fd);
+		    break;
+	    case save_settings:
+		    thinklmi_save_settings(fd);
+		    break;
+	    case discard_settings:
+		    thinklmi_discard_settings(fd);
 		    break;
     }
     close (fd);

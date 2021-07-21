@@ -213,6 +213,10 @@ MODULE_LICENSE("GPL");
  * #define LENOVO_QUERY_GUID "05901221-D566-11D1-B2F0-00A0C9062910"
  */
 
+
+#define LENOVO_LMIOPCODE_SETTING_GUID \
+    "DFDDEF2C-57D4-48CE-B196-0FB787D90836"
+
 #define TLMI_NAME "thinklmi"
 
 /* Return values */
@@ -270,6 +274,9 @@ struct think_lmi {
 	char auth_string[TLMI_PWD_MAXLEN + TLMI_ENC_MAXLEN
 		                      + TLMI_LANG_MAXLEN + 2];
 	char password_type[TLMI_PWDTYPE_MAXLEN];
+	char tpm_type[TLMI_TPMTYPE_MAXLEN];
+	char passcurr[TLMI_PWD_MAXLEN];
+	char passnew[TLMI_PWD_MAXLEN];
 
 	bool can_set_bios_settings;
 	bool can_discard_bios_settings;
@@ -324,7 +331,6 @@ static int think_lmi_simple_call(const char *guid,
 	const struct acpi_buffer input = { strlen(arg), (char *)arg };
 	struct acpi_buffer output = { ACPI_ALLOCATE_BUFFER, NULL };
 	acpi_status status;
-
 	/*
 	 * duplicated call required to match bios workaround for behavior
 	 * seen when WMI accessed via scripting on other OS
@@ -409,6 +415,20 @@ static int think_lmi_set_platform_settings(const char *settings)
 	return think_lmi_simple_call(LENOVO_SET_PLATFORM_SETTINGS_GUID,
 		                        settings);
 }
+
+static int think_lmi_set_lmiopcode_settings(const char *settings)
+{
+	return think_lmi_simple_call(LENOVO_LMIOPCODE_SETTING_GUID,
+		                        settings);
+}
+static int think_lmi_load_default(const char *password)
+{
+
+        return think_lmi_simple_call(LENOVO_LOAD_DEFAULT_SETTINGS_GUID,
+                                        password);
+}
+
+
 /* Create the auth string from password chunks */
 static void update_auth_string(struct think_lmi *think)
 {
@@ -662,6 +682,169 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
                 if (ret) {
 			goto error;
                 }
+		break;
+
+	case THINKLMI_LMIOPCODE:
+		if (copy_from_user(get_set_string, (void *)arg,
+				   sizeof(get_set_string)))
+			return -EFAULT;
+		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s",
+				             get_set_string);
+
+		tmp_string = get_set_string;
+
+                value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+		snprintf(think->password, TLMI_PWD_MAXLEN, "%s",
+				             get_set_string);
+		sprintf(settings_str, "WmiOpcodePasswordAdmin:");
+		strcat(settings_str, think->password);
+		strcat(settings_str,";");
+
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+
+                value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+		snprintf(think->password_type, TLMI_PWDTYPE_MAXLEN, "%s", value);
+		sprintf(settings_str, "WmiOpcodePasswordType:");
+		strcat(settings_str, think->password_type);
+		strcat(settings_str,";");
+
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+
+                value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+
+		snprintf(think->passcurr, TLMI_PWD_MAXLEN, "%s",value);
+
+		sprintf(settings_str, "WmiOpcodePasswordCurrent01:");
+		strcat(settings_str, think->passcurr);
+		strcat(settings_str,";");
+
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+
+		value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+		snprintf(think->passnew, TLMI_PWD_MAXLEN,
+			                    "%s",value);
+		sprintf(settings_str, "WmiOpcodePasswordNew01:");
+		strcat(settings_str, think->passnew);
+
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+
+		sprintf(settings_str, "WmiOpcodePasswordSetUpdate;");
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+
+		break;
+	case THINKLMI_LMIOPCODE_NOPAP:
+		if (copy_from_user(get_set_string, (void *)arg,
+				   sizeof(get_set_string)))
+			return -EFAULT;
+		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s",
+				             get_set_string);
+		tmp_string = get_set_string;
+
+                value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+		snprintf(think->password, TLMI_PWD_MAXLEN, "%s",
+				             get_set_string);
+		sprintf(settings_str, "WmiOpcodePasswordType:");
+		strcat(settings_str, think->password);
+		strcat(settings_str,";");
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+
+                value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+
+		snprintf(think->passcurr, TLMI_PWD_MAXLEN, "%s",value);
+
+		sprintf(settings_str, "WmiOpcodePasswordCurrent01:");
+		strcat(settings_str, think->passcurr);
+		strcat(settings_str,";");
+
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+
+		value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+		snprintf(think->passnew, TLMI_PWD_MAXLEN,
+			                    "%s",value);
+		sprintf(settings_str, "WmiOpcodePasswordNew01:");
+		strcat(settings_str, think->passnew);
+
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+		sprintf(settings_str, "WmiOpcodePasswordSetUpdate;");
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+
+		break;
+
+	case THINKLMI_TPMTYPE:
+		if (copy_from_user(get_set_string, (void *)arg,
+				            sizeof(get_set_string)))
+			return -EFAULT;
+		sprintf(settings_str, "WmiOpcodeTPM:");
+		strncat(settings_str, get_set_string, TLMI_SETTINGS_MAXLEN);
+
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+                if (ret) {
+			goto error;
+                }
+	        break;
+
+	case THINKLMI_LOAD_DEFAULT:
+		ret = think_lmi_load_default(think->auth_string);
+		if (ret) {
+                        goto error;
+                }
+	        break;
+
+	case THINKLMI_SAVE_SETTINGS:
+		ret = think_lmi_save_bios_settings(think->auth_string);
+                if (ret) {
+                        goto error;
+                }
+
+		break;
+
+	case THINKLMI_DISCARD_SETTINGS:
+		ret = think_lmi_discard_bios_settings(think->auth_string);
+                if (ret) {
+                        goto error;
+                }
+
 		break;
 	default:
 		return -EINVAL;
