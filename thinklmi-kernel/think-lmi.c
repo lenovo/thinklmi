@@ -205,17 +205,23 @@ MODULE_LICENSE("GPL");
  *  Return big chunk of data
  */
 #define LENOVO_PLATFORM_SETTING_GUID \
-    "7430019A-DCE9-4548-BAB0-9FDE0935CAFF"
+	"7430019A-DCE9-4548-BAB0-9FDE0935CAFF"
 
 #define LENOVO_SET_PLATFORM_SETTINGS_GUID \
-    "7FF47003-3B6C-4E5E-A227-E979824A85D1"
+	"7FF47003-3B6C-4E5E-A227-E979824A85D1"
 /* For future use
  * #define LENOVO_QUERY_GUID "05901221-D566-11D1-B2F0-00A0C9062910"
  */
 
 
+/**
+ * Name:
+ *  Lenovo_lmiopcode_setting_guid
+ * Description
+ *  Alternative setting method with advanced features
+ */
 #define LENOVO_LMIOPCODE_SETTING_GUID \
-    "DFDDEF2C-57D4-48CE-B196-0FB787D90836"
+	"DFDDEF2C-57D4-48CE-B196-0FB787D90836"
 
 #define TLMI_NAME "thinklmi"
 
@@ -266,7 +272,7 @@ struct think_lmi_pcfg {
 struct think_lmi {
 	struct wmi_device *wmi_device;
 
-	int settings_count; 
+	int settings_count;
 
 	char password[TLMI_PWD_MAXLEN];
 	char password_encoding[TLMI_ENC_MAXLEN];
@@ -388,46 +394,37 @@ static int think_lmi_get_bios_selections(const char *item, char **value)
 
 static int think_lmi_set_bios_settings(const char *settings)
 {
-	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID,
-		                        settings);
+	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID, settings);
 }
 
 static int think_lmi_save_bios_settings(const char *password)
 {
-	return think_lmi_simple_call(LENOVO_SAVE_BIOS_SETTINGS_GUID,
-		                        password);
+	return think_lmi_simple_call(LENOVO_SAVE_BIOS_SETTINGS_GUID, password);
 }
 
 static int think_lmi_discard_bios_settings(const char *password)
 {
-	return think_lmi_simple_call(LENOVO_DISCARD_BIOS_SETTINGS_GUID,
-			                 password);
+	return think_lmi_simple_call(LENOVO_DISCARD_BIOS_SETTINGS_GUID, password);
 }
 
 static int think_lmi_set_bios_password(const char *settings)
 {
-	return think_lmi_simple_call(LENOVO_SET_BIOS_PASSWORD_GUID,
-		                         settings);
+	return think_lmi_simple_call(LENOVO_SET_BIOS_PASSWORD_GUID, settings);
 }
 
 static int think_lmi_set_platform_settings(const char *settings)
 {
-	return think_lmi_simple_call(LENOVO_SET_PLATFORM_SETTINGS_GUID,
-		                        settings);
+	return think_lmi_simple_call(LENOVO_SET_PLATFORM_SETTINGS_GUID, settings);
 }
 
 static int think_lmi_set_lmiopcode_settings(const char *settings)
 {
-	return think_lmi_simple_call(LENOVO_LMIOPCODE_SETTING_GUID,
-		                        settings);
+	return think_lmi_simple_call(LENOVO_LMIOPCODE_SETTING_GUID, settings);
 }
 static int think_lmi_load_default(const char *password)
 {
-
-        return think_lmi_simple_call(LENOVO_LOAD_DEFAULT_SETTINGS_GUID,
-                                        password);
+	return think_lmi_simple_call(LENOVO_LOAD_DEFAULT_SETTINGS_GUID, password);
 }
-
 
 /* Create the auth string from password chunks */
 static void update_auth_string(struct think_lmi *think)
@@ -504,7 +501,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		strncpy(settings_str, think->settings[j],
 				(TLMI_SETTINGS_MAXLEN-1));
 		if (copy_to_user((char *)arg, settings_str,
-				 sizeof(settings_str))) 
+				 sizeof(settings_str)))
 			return -EFAULT;
 		break;
 	case THINKLMI_SET_SETTING:
@@ -523,7 +520,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			                get_set_string);
 		ret = validate_setting_name(think, tmp_string);
 		kfree(tmp_string);
-		if (ret < 0) 
+		if (ret < 0)
 			goto error;
 
 		/* If authorisation required add that to command */
@@ -608,7 +605,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		tmp_string[count-1] = '\0';
 		if (copy_to_user((char *)arg, tmp_string, count)) {
 			kfree(tmp_string);
-			return -EFAULT;
+			goto error;
 		}
 		kfree(tmp_string);
 		break;
@@ -685,166 +682,129 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		break;
 
 	case THINKLMI_LMIOPCODE:
-		if (copy_from_user(get_set_string, (void *)arg,
-				   sizeof(get_set_string)))
+		if (copy_from_user(get_set_string, (void *)arg, sizeof(get_set_string)))
 			return -EFAULT;
-		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s",
-				             get_set_string);
+		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s", get_set_string);
 
 		tmp_string = get_set_string;
-
-                value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-		snprintf(think->password, TLMI_PWD_MAXLEN, "%s",
-				             get_set_string);
-		sprintf(settings_str, "WmiOpcodePasswordAdmin:");
-		strcat(settings_str, think->password);
-		strcat(settings_str,";");
-
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
-			goto error;
-                }
-
-                value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-		snprintf(think->password_type, TLMI_PWDTYPE_MAXLEN, "%s", value);
-		sprintf(settings_str, "WmiOpcodePasswordType:");
-		strcat(settings_str, think->password_type);
-		strcat(settings_str,";");
-
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
-			goto error;
-                }
-
-                value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-
-		snprintf(think->passcurr, TLMI_PWD_MAXLEN, "%s",value);
-
-		sprintf(settings_str, "WmiOpcodePasswordCurrent01:");
-		strcat(settings_str, think->passcurr);
-		strcat(settings_str,";");
-
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
-			goto error;
-                }
 
 		value = strsep(&tmp_string, ",");
 		if (!value)
 			return -EFAULT;
-		snprintf(think->passnew, TLMI_PWD_MAXLEN,
-			                    "%s",value);
-		sprintf(settings_str, "WmiOpcodePasswordNew01:");
-		strcat(settings_str, think->passnew);
+
+		snprintf(think->password, TLMI_PWD_MAXLEN, "%s", get_set_string);
+		sprintf(settings_str, "WmiOpcodePasswordAdmin:%s;", think->password);
 
 		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
+		if (ret)
 			goto error;
-                }
+
+		value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+
+		snprintf(think->password_type, TLMI_PWDTYPE_MAXLEN, "%s", value);
+		sprintf(settings_str, "WmiOpcodePasswordType:%s;", think->password_type);
+
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+		if (ret)
+			goto error;
+
+		value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+
+		snprintf(think->passcurr, TLMI_PWD_MAXLEN, "%s", value);
+		sprintf(settings_str, "WmiOpcodePasswordCurrent01:%s;", think->passcurr);
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+		if (ret)
+			goto error;
+
+		value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+
+		snprintf(think->passnew, TLMI_PWD_MAXLEN, "%s", value);
+		sprintf(settings_str, "WmiOpcodePasswordNew01:%s;", think->passnew);
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+		if (ret)
+			goto error;
 
 		sprintf(settings_str, "WmiOpcodePasswordSetUpdate;");
 		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
+		if (ret)
 			goto error;
-                }
 
 		break;
 	case THINKLMI_LMIOPCODE_NOPAP:
 		if (copy_from_user(get_set_string, (void *)arg,
-				   sizeof(get_set_string)))
+					sizeof(get_set_string)))
 			return -EFAULT;
-		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s",
-				             get_set_string);
+		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s", get_set_string);
 		tmp_string = get_set_string;
-
-                value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-		snprintf(think->password, TLMI_PWD_MAXLEN, "%s",
-				             get_set_string);
-		sprintf(settings_str, "WmiOpcodePasswordType:");
-		strcat(settings_str, think->password);
-		strcat(settings_str,";");
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
-			goto error;
-                }
-
-                value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-
-		snprintf(think->passcurr, TLMI_PWD_MAXLEN, "%s",value);
-
-		sprintf(settings_str, "WmiOpcodePasswordCurrent01:");
-		strcat(settings_str, think->passcurr);
-		strcat(settings_str,";");
-
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
-			goto error;
-                }
 
 		value = strsep(&tmp_string, ",");
 		if (!value)
 			return -EFAULT;
-		snprintf(think->passnew, TLMI_PWD_MAXLEN,
-			                    "%s",value);
-		sprintf(settings_str, "WmiOpcodePasswordNew01:");
-		strcat(settings_str, think->passnew);
 
+		snprintf(think->password, TLMI_PWD_MAXLEN, "%s", get_set_string);
+		sprintf(settings_str, "WmiOpcodePasswordType:%s;", think->password);
 		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
-			goto error;
-                }
+		if (ret)
+			return -EFAULT;
+
+		value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+
+		snprintf(think->passcurr, TLMI_PWD_MAXLEN, "%s", value);
+		sprintf(settings_str, "WmiOpcodePasswordCurrent01:%s;", think->passcurr);
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+		if (ret)
+			return -EFAULT;
+
+		value = strsep(&tmp_string, ",");
+		if (!value)
+			return -EFAULT;
+
+		snprintf(think->passnew, TLMI_PWD_MAXLEN, "%s", value);
+		sprintf(settings_str, "WmiOpcodePasswordNew01:%s;", think->passnew);
+		ret = think_lmi_set_lmiopcode_settings(settings_str);
+		if (ret)
+			return -EFAULT;
+
 		sprintf(settings_str, "WmiOpcodePasswordSetUpdate;");
 		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
-			goto error;
-                }
+		if (ret)
+			return -EFAULT;
 
 		break;
-
 	case THINKLMI_TPMTYPE:
 		if (copy_from_user(get_set_string, (void *)arg,
-				            sizeof(get_set_string)))
+					sizeof(get_set_string)))
 			return -EFAULT;
+
 		sprintf(settings_str, "WmiOpcodeTPM:");
 		strncat(settings_str, get_set_string, TLMI_SETTINGS_MAXLEN);
-
 		ret = think_lmi_set_lmiopcode_settings(settings_str);
-                if (ret) {
-			goto error;
-                }
-	        break;
-
-	case THINKLMI_LOAD_DEFAULT:
-		ret = think_lmi_load_default(think->auth_string);
-		if (ret) {
-                        goto error;
-                }
-	        break;
-
-	case THINKLMI_SAVE_SETTINGS:
-		ret = think_lmi_save_bios_settings(think->auth_string);
-                if (ret) {
-                        goto error;
-                }
+		if (ret)
+			return -EFAULT;
 
 		break;
-
+	case THINKLMI_LOAD_DEFAULT:
+		ret = think_lmi_load_default(think->auth_string);
+		if (ret)
+			return -EFAULT;
+		break;
+	case THINKLMI_SAVE_SETTINGS:
+		ret = think_lmi_save_bios_settings(think->auth_string);
+		if (ret)
+			return -EFAULT;
+		break;
 	case THINKLMI_DISCARD_SETTINGS:
 		ret = think_lmi_discard_bios_settings(think->auth_string);
-                if (ret) {
-                        goto error;
-                }
-
+		if (ret)
+			goto error;
 		break;
 	default:
 		return -EINVAL;
@@ -875,8 +835,7 @@ static void think_lmi_chardev_initialize(struct think_lmi *think)
         int ret;
 	struct device *dev_ret;
 
-	ret = alloc_chrdev_region(&tlmi_dev, 0, TLMI_NUM_DEVICES,
-		                             TLMI_NAME);
+	ret = alloc_chrdev_region(&tlmi_dev, 0, TLMI_NUM_DEVICES, TLMI_NAME);
 	if (ret < 0) {
 		pr_warn("tlmi: char dev allocation failed\n");
 		return;
@@ -993,7 +952,7 @@ static int think_lmi_add(struct wmi_device *wdev)
 	return 0;
 }
 
-static int think_lmi_remove(struct wmi_device *wdev)
+static void think_lmi_remove(struct wmi_device *wdev)
 {
 	struct think_lmi *think;
 	int i;
@@ -1007,7 +966,7 @@ static int think_lmi_remove(struct wmi_device *wdev)
 	}
 
 	kfree(think);
-	return 0;
+	return;
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0))
