@@ -990,7 +990,11 @@ static struct wmi_driver think_lmi_driver = {
 	},
 	.id_table = think_lmi_id_table,
 	.probe = think_lmi_probe,
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0))
+	.remove = think_lmi_remove,
+#else
 	.remove = (int (*)(struct wmi_device *))think_lmi_remove,
+#endif
 };
 
 static int __init think_lmi_init(void)
