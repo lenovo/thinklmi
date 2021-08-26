@@ -990,7 +990,7 @@ static struct wmi_driver think_lmi_driver = {
 	},
 	.id_table = think_lmi_id_table,
 	.probe = think_lmi_probe,
-	.remove = think_lmi_remove,
+	.remove = (int (*)(struct wmi_device *))think_lmi_remove,
 };
 
 static int __init think_lmi_init(void)
