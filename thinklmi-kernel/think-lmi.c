@@ -952,7 +952,13 @@ static int think_lmi_add(struct wmi_device *wdev)
 	return 0;
 }
 
-static void think_lmi_remove(struct wmi_device *wdev)
+static
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0))
+void
+#else
+int
+#endif
+think_lmi_remove(struct wmi_device *wdev)
 {
 	struct think_lmi *think;
 	int i;
@@ -966,7 +972,11 @@ static void think_lmi_remove(struct wmi_device *wdev)
 	}
 
 	kfree(think);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0))
 	return;
+#else
+	return 0;
+#endif
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0))
