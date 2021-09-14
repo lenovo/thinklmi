@@ -98,3 +98,5 @@ located in the COPYING file.
 ## Compile
 make
 make install - loads this module after a reboot
+             - check the makefile for default path
+make clean   - clears the compiled module and removes from the default path

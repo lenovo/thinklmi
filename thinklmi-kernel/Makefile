@@ -12,6 +12,7 @@ default:
 
 clean:
 	$(MAKE) -C $(KDIR) M=$(PWD) clean
+	rm -f /lib/modules/$(KERNELRELEASE)/extra/think-lmi.ko
 
 modules_install:
 	$(INSTALL) -d /lib/modules/$(KERNELRELEASE)/extra/
