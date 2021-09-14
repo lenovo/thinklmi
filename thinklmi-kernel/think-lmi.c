@@ -789,6 +789,9 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		ret = think_lmi_set_lmiopcode_settings(settings_str);
 		if (ret)
 			return -EFAULT;
+		ret = think_lmi_save_bios_settings(think->auth_string);
+		if (ret)
+			return -EFAULT;
 
 		break;
 	case THINKLMI_LOAD_DEFAULT:
