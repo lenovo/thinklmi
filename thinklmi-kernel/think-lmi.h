@@ -11,6 +11,7 @@
 #define TLMI_TPMTYPE_MAXLEN   64
 #define TLMI_ENC_MAXLEN       64
 #define TLMI_LANG_MAXLEN       4
+#define TLMI_MAX_SETTINGS    255
 /*
  * Longest string should be in the set command: allow size of BIOS
  * option and choice

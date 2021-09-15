@@ -66,15 +66,15 @@ Do a reboot for the new password to take effect.
 ## Debug
 ./thinklmi -d [BIOS Setting] [option]
 
-This configures a the BIOS setting in debug mode. Use with care.
+This configures the BIOS setting in debug mode. Use with care.
 
 eg: ./thinklmi -d FnSticky Enable
-
 
 ## Change Password using LMIOPCODE
 ./thinklmi -w [Admin Password] [Password Type] [Old Password] [New Pasword]
 
-This command changes the password in thinkstation systems, with Admin password
+This command changes the password on thinkstation systems, with Admin password
+The password type can be any BIOS supported password like pop, pap, mhdp, uhdp etc.
 
 eg: ./thinklmi -w hello pop oldpass newpass
 
@@ -89,15 +89,14 @@ eg: ./thinklmi -w pop oldpass newpass
 ./thinklmi -t [TPM Type]
 
 This command changes the TPM Type in thinkstation systems
+The possible tpmtype values are tpm12, ftpm and tpm20
 
-./thinklmi -t tpm12
-
+eg: ./thinklmi -t tpm12
 
 ## Load Default Settings
 ./thinklmi -l
 
 This command loads the Default BIOS Settings
-
 
 ## Save Settings
 ./thinklmi save settings

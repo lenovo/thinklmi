@@ -39,7 +39,7 @@ void get_settings_all(int fd)
         perror("query_apps ioctl get");
     } else {
 	printf("Total settings: %d\n", settings_count);
-	for(i=0; i <= 0xFF; i++)
+	for(i=0; i <= TLMI_MAX_SETTINGS; i++)
 	{
 		settings_str[0] = i;
                 

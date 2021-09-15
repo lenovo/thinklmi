@@ -496,7 +496,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 				   sizeof(settings_str)))
 			return -EFAULT;
 		j = settings_str[0];
-		if ((j > 0xFF) || (!think->settings[j]))
+		if ((j > TLMI_MAX_SETTINGS) || (!think->settings[j]))
 			return -EINVAL;
 		strncpy(settings_str, think->settings[j],
 				(TLMI_SETTINGS_MAXLEN-1));
@@ -887,13 +887,11 @@ static void think_lmi_analyze(struct think_lmi *think)
 	 * Try to find the number of valid settings of this machine
 	 * and use it to create sysfs attributes
 	 */
-	for (i = 0; i < 0xFF; ++i) {
+	for (i = 0; i < TLMI_MAX_SETTINGS; ++i) {
 		char *item = NULL;
 		int spleng = 0;
 		int num = 0;
 		char *p;
-
-		printk("iteration %d\n",i);
 
 		status = think_lmi_setting(i, &item,
 			        LENOVO_BIOS_SETTING_GUID);
@@ -917,14 +915,8 @@ static void think_lmi_analyze(struct think_lmi *think)
 		if (p)
 			*p = '\0';
 		think->settings[i] = item; /* Cache setting name */
-                printk("%d  %s\n", i, think->settings[i]);
-
 		think->settings_count++;
-
-		printk("setting count is %d\n",think->settings_count);
 	}
-
-	printk("final count %d\n", think->settings_count);
 
 	if (wmi_has_guid(LENOVO_SET_BIOS_SETTINGS_GUID) &&
 	    wmi_has_guid(LENOVO_SAVE_BIOS_SETTINGS_GUID))
