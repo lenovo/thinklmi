@@ -30,7 +30,6 @@
 #define THINKLMI_TPMTYPE             _IOW('T', 10, char *)
 #define THINKLMI_LOAD_DEFAULT        _IOW('T', 11, char *)
 #define THINKLMI_SAVE_SETTINGS       _IOW('T', 12, char *)
-#define THINKLMI_DISCARD_SETTINGS    _IOW('T', 13, char *)
 
 #endif /* !_THINK_LMI_H_ */
 

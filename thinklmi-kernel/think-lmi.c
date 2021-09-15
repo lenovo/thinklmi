@@ -804,11 +804,6 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		if (ret)
 			return -EFAULT;
 		break;
-	case THINKLMI_DISCARD_SETTINGS:
-		ret = think_lmi_discard_bios_settings(think->auth_string);
-		if (ret)
-			goto error;
-		break;
 	default:
 		return -EINVAL;
 	}
