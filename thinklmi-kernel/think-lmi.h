@@ -26,7 +26,6 @@
 #define THINKLMI_CHANGE_PASSWORD     _IOW('T', 6, char *)
 #define THINKLMI_DEBUG               _IOW('T', 7, char *)
 #define THINKLMI_LMIOPCODE           _IOW('T', 8, char *)
-#define THINKLMI_LMIOPCODE_NOPAP     _IOW('T', 9, char *)
 #define THINKLMI_TPMTYPE             _IOW('T', 10, char *)
 #define THINKLMI_LOAD_DEFAULT        _IOW('T', 11, char *)
 #define THINKLMI_SAVE_SETTINGS       _IOW('T', 12, char *)

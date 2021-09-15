@@ -129,17 +129,6 @@ void thinklmi_lmiopcode(int fd, char *admin, char *passtype, char *oldpass, char
 	}
 }
 
-void thinklmi_lmiopcode_nopap(int fd, char *passtype, char *oldpass, char *newpass )
-{
-	char setting_string[TLMI_GETSET_MAXLEN];
-	snprintf(setting_string, TLMI_GETSET_MAXLEN, "%s,%s,%s;", passtype, oldpass, newpass);
-        if(ioctl(fd, THINKLMI_LMIOPCODE_NOPAP, &setting_string) == -1) {
-	   perror("BIOS password change failed");
-	} else {
-	   printf("BIOS password changed\n");
-           printf("Setting will not change until reboot\n");
-	}
-}
 void thinklmi_tpmtype(int fd, char *tpmtype)
 {
 	char setting_string[TLMI_GETSET_MAXLEN];
@@ -184,7 +173,6 @@ static void show_usage(void)
 	fprintf(stdout, "\t -d [debug setting] [option]\n");
 	fprintf(stdout, "\t -l load default settings\n");
 	fprintf(stdout, "\t -w [Admin password] [password type] [current password] [new password] - Change password using lmiopcode. \n");
-	fprintf(stdout, "\t -w [password type] [current password] [new password] - Change password using lmiopcode, no Admin password set. \n");
 	fprintf(stdout, "\t -t [tpm type] - Change tpm type\n");
 	fprintf(stdout, "\t save settings - save BIOS settings \n");
 	fprintf(stdout, "Notes:  \n");
@@ -206,10 +194,9 @@ int main(int argc, char *argv[])
 	change_password,
 	debug,
 	lmiopcode,
-	lmiopcode_nopap,
 	tpmtype,
 	load_default,
-	save_settings,
+	save_settings
     } option;
 
     if (getuid()!=0) {
@@ -258,15 +245,9 @@ int main(int argc, char *argv[])
 		    if (strcmp(argv[1], "-p") == 0)
 			    option = authenticate;
 		    else
-
-		    if (strcmp(argv[1], "-w") == 0)
-		            option = lmiopcode_nopap;
-
-		    else
 			    show_usage();
 		    break;
 	    case 6:
-
                     if (strcmp(argv[1], "-w") == 0)
                             option = lmiopcode;
 		    else
@@ -315,9 +296,6 @@ int main(int argc, char *argv[])
 		    break;
 	    case lmiopcode:
 		    thinklmi_lmiopcode(fd, argv[2], argv[3], argv[4], argv[5]);
-		    break;
-	    case lmiopcode_nopap:
-		    thinklmi_lmiopcode_nopap(fd, argv[2], argv[3], argv[4]);
 		    break;
 	    case tpmtype:
 		    thinklmi_tpmtype(fd, argv[2]);

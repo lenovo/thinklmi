@@ -736,49 +736,6 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			goto error;
 
 		break;
-	case THINKLMI_LMIOPCODE_NOPAP:
-		if (copy_from_user(get_set_string, (void *)arg,
-					sizeof(get_set_string)))
-			return -EFAULT;
-		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s", get_set_string);
-		tmp_string = get_set_string;
-
-		value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-
-		snprintf(think->password, TLMI_PWD_MAXLEN, "%s", get_set_string);
-		sprintf(settings_str, "WmiOpcodePasswordType:%s;", think->password);
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-		if (ret)
-			return -EFAULT;
-
-		value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-
-		snprintf(think->passcurr, TLMI_PWD_MAXLEN, "%s", value);
-		sprintf(settings_str, "WmiOpcodePasswordCurrent01:%s;", think->passcurr);
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-		if (ret)
-			return -EFAULT;
-
-		value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-
-		snprintf(think->passnew, TLMI_PWD_MAXLEN, "%s", value);
-		sprintf(settings_str, "WmiOpcodePasswordNew01:%s;", think->passnew);
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-		if (ret)
-			return -EFAULT;
-
-		sprintf(settings_str, "WmiOpcodePasswordSetUpdate;");
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-		if (ret)
-			return -EFAULT;
-
-		break;
 	case THINKLMI_TPMTYPE:
 		if (copy_from_user(get_set_string, (void *)arg,
 					sizeof(get_set_string)))
