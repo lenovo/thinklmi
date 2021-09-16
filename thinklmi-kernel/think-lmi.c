@@ -291,7 +291,7 @@ struct think_lmi {
 	bool can_set_bios_password;
 	bool can_get_password_settings;
 
-	unsigned char *settings[256];
+	unsigned char *settings[TLMI_MAX_SETTINGS];
 	struct dev_ext_attribute *devattrs;
 	struct cdev c_dev;
 };
