@@ -291,7 +291,7 @@ struct think_lmi {
 	bool can_set_bios_password;
 	bool can_get_password_settings;
 
-	unsigned char *settings[256];
+	unsigned char *settings[TLMI_MAX_SETTINGS];
 	struct dev_ext_attribute *devattrs;
 	struct cdev c_dev;
 };
@@ -496,7 +496,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 				   sizeof(settings_str)))
 			return -EFAULT;
 		j = settings_str[0];
-		if ((j > think->settings_count) || (!think->settings[j]))
+		if ((j > TLMI_MAX_SETTINGS) || (!think->settings[j]))
 			return -EINVAL;
 		strncpy(settings_str, think->settings[j],
 				(TLMI_SETTINGS_MAXLEN-1));
@@ -736,49 +736,6 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			goto error;
 
 		break;
-	case THINKLMI_LMIOPCODE_NOPAP:
-		if (copy_from_user(get_set_string, (void *)arg,
-					sizeof(get_set_string)))
-			return -EFAULT;
-		snprintf(settings_str, TLMI_SETTINGS_MAXLEN, "%s", get_set_string);
-		tmp_string = get_set_string;
-
-		value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-
-		snprintf(think->password, TLMI_PWD_MAXLEN, "%s", get_set_string);
-		sprintf(settings_str, "WmiOpcodePasswordType:%s;", think->password);
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-		if (ret)
-			return -EFAULT;
-
-		value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-
-		snprintf(think->passcurr, TLMI_PWD_MAXLEN, "%s", value);
-		sprintf(settings_str, "WmiOpcodePasswordCurrent01:%s;", think->passcurr);
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-		if (ret)
-			return -EFAULT;
-
-		value = strsep(&tmp_string, ",");
-		if (!value)
-			return -EFAULT;
-
-		snprintf(think->passnew, TLMI_PWD_MAXLEN, "%s", value);
-		sprintf(settings_str, "WmiOpcodePasswordNew01:%s;", think->passnew);
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-		if (ret)
-			return -EFAULT;
-
-		sprintf(settings_str, "WmiOpcodePasswordSetUpdate;");
-		ret = think_lmi_set_lmiopcode_settings(settings_str);
-		if (ret)
-			return -EFAULT;
-
-		break;
 	case THINKLMI_TPMTYPE:
 		if (copy_from_user(get_set_string, (void *)arg,
 					sizeof(get_set_string)))
@@ -787,6 +744,9 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		sprintf(settings_str, "WmiOpcodeTPM:");
 		strncat(settings_str, get_set_string, TLMI_SETTINGS_MAXLEN);
 		ret = think_lmi_set_lmiopcode_settings(settings_str);
+		if (ret)
+			return -EFAULT;
+		ret = think_lmi_save_bios_settings(think->auth_string);
 		if (ret)
 			return -EFAULT;
 
@@ -800,11 +760,6 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		ret = think_lmi_save_bios_settings(think->auth_string);
 		if (ret)
 			return -EFAULT;
-		break;
-	case THINKLMI_DISCARD_SETTINGS:
-		ret = think_lmi_discard_bios_settings(think->auth_string);
-		if (ret)
-			goto error;
 		break;
 	default:
 		return -EINVAL;
@@ -884,7 +839,7 @@ static void think_lmi_analyze(struct think_lmi *think)
 	 * Try to find the number of valid settings of this machine
 	 * and use it to create sysfs attributes
 	 */
-	for (i = 0; i < 0xFF; ++i) {
+	for (i = 0; i < TLMI_MAX_SETTINGS; ++i) {
 		char *item = NULL;
 		int spleng = 0;
 		int num = 0;

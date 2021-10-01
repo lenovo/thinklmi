@@ -94,3 +94,9 @@ http://download.lenovo.com/ibmdl/pub/pc/pccbbs/thinkcentre_pdf/hrdeploy_en.pdf
 ## Legal
 This code is distributed under GPL-v2 license with full text of the license 
 located in the COPYING file.
+
+## Compile
+make
+make install - loads this module after a reboot
+             - check the makefile for default path
+make clean   - clears the compiled module and removes from the default path

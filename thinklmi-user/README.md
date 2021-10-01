@@ -63,6 +63,51 @@ eg: ./thinklmi -p hello newpd pap ascii us
 Change the supervisor password or power on password using this command.
 Do a reboot for the new password to take effect.
 
+## Debug
+./thinklmi -d [BIOS Setting] [option]
+
+This configures the BIOS setting in debug mode. Use with care.
+
+eg: ./thinklmi -d FnSticky Enable
+
+## Change Password using LMIOPCODE
+./thinklmi -w [Admin Password] [Password Type] [Old Password] [New Pasword]
+
+This command changes the password on thinkstation systems, with Admin password
+The password type can be any BIOS supported password like pop, pap, mhdp, uhdp etc.
+
+eg: ./thinklmi -w hello pop oldpass newpass
+
+## Change Password using LMIOPCODE, without Admin Password
+./thinklmi -w [Password Type] [Old Password] [New Password]
+
+This command changes the password in thinkstation systems, without an Admin password
+
+eg: ./thinklmi -w pop oldpass newpass
+
+## TPMTYPE Change
+./thinklmi -t [TPM Type]
+
+This command changes the TPM Type in thinkstation systems
+The possible tpmtype values are tpm12, ftpm and tpm20
+
+eg: ./thinklmi -t tpm12
+
+## Load Default Settings
+./thinklmi -l
+
+This command loads the Default BIOS Settings
+
+## Save Settings
+./thinklmi save settings
+
+This command saves the BIOS Settings
+
+## Discard Default Settings
+./thinklmi discard settings
+
+This command discards the Default BIOS Settings
+
 ## References
 Thinkpad WMI interface documentation:
 http://download.lenovo.com/ibmdl/pub/pc/pccbbs/thinkcentre_pdf/hrdeploy_en.pdf

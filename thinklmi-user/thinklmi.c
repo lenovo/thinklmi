@@ -39,7 +39,7 @@ void get_settings_all(int fd)
         perror("query_apps ioctl get");
     } else {
 	printf("Total settings: %d\n", settings_count);
-	for(i=0; i <= settings_count; i++)
+	for(i=0; i <= TLMI_MAX_SETTINGS; i++)
 	{
 		settings_str[0] = i;
                 
@@ -129,17 +129,6 @@ void thinklmi_lmiopcode(int fd, char *admin, char *passtype, char *oldpass, char
 	}
 }
 
-void thinklmi_lmiopcode_nopap(int fd, char *passtype, char *oldpass, char *newpass )
-{
-	char setting_string[TLMI_GETSET_MAXLEN];
-	snprintf(setting_string, TLMI_GETSET_MAXLEN, "%s,%s,%s;", passtype, oldpass, newpass);
-        if(ioctl(fd, THINKLMI_LMIOPCODE_NOPAP, &setting_string) == -1) {
-	   perror("BIOS password change failed");
-	} else {
-	   printf("BIOS password changed\n");
-           printf("Setting will not change until reboot\n");
-	}
-}
 void thinklmi_tpmtype(int fd, char *tpmtype)
 {
 	char setting_string[TLMI_GETSET_MAXLEN];
@@ -172,18 +161,9 @@ void thinklmi_save_settings(int fd)
 	}
 }
 
-void thinklmi_discard_settings(int fd)
-{
-	if(ioctl(fd, THINKLMI_DISCARD_SETTINGS) == -1) {
-	   perror(" Error discarding Settings\n");
-	} else {
-	   printf("Settings Discarded\n");
-	}
-}
-
 static void show_usage(void)
 {
-	fprintf(stdout, "Usage: thinklmi [-g | -s | -p | -c | -d | -l | -w | getsettings| save settings | discard settings] <options>\n");
+	fprintf(stdout, "Usage: thinklmi [-g | -s | -p | -c | -d | -l | -w | getsettings| save settings] <options>\n");
 	fprintf(stdout, "Option details:  \n");
 	fprintf(stdout, "\t getsettings - display all available BIOS options:  \n");
 	fprintf(stdout, "\t -g [BIOS option] - Get the current setting and choices for given BIOS option\n");
@@ -193,10 +173,8 @@ static void show_usage(void)
 	fprintf(stdout, "\t -d [debug setting] [option]\n");
 	fprintf(stdout, "\t -l load default settings\n");
 	fprintf(stdout, "\t -w [Admin password] [password type] [current password] [new password] - Change password using lmiopcode. \n");
-	fprintf(stdout, "\t -w [password type] [current password] [new password] - Change password using lmiopcode, no Admin password set. \n");
 	fprintf(stdout, "\t -t [tpm type] - Change tpm type\n");
 	fprintf(stdout, "\t save settings - save BIOS settings \n");
-	fprintf(stdout, "\t discard settings - discard loaded settings \n");
 	fprintf(stdout, "Notes:  \n");
 	fprintf(stdout, "\t password type can be \"pap\" or \"pop\" \n");
 	fprintf(stdout, "\t encoding can be \"ascii\" or \"scancode\" \n");
@@ -216,11 +194,9 @@ int main(int argc, char *argv[])
 	change_password,
 	debug,
 	lmiopcode,
-	lmiopcode_nopap,
 	tpmtype,
 	load_default,
-	save_settings,
-	discard_settings
+	save_settings
     } option;
 
     if (getuid()!=0) {
@@ -249,11 +225,6 @@ int main(int argc, char *argv[])
 			    option = save_settings;
 		    else
 
-	            if (strcmp(argv[1], "discard") == 0)
-			    option = discard_settings;
-
-		    else
-
 		    if (strcmp(argv[1], "-t") == 0)
 			    option = tpmtype;
 
@@ -274,15 +245,9 @@ int main(int argc, char *argv[])
 		    if (strcmp(argv[1], "-p") == 0)
 			    option = authenticate;
 		    else
-
-		    if (strcmp(argv[1], "-w") == 0)
-		            option = lmiopcode_nopap;
-
-		    else
 			    show_usage();
 		    break;
 	    case 6:
-
                     if (strcmp(argv[1], "-w") == 0)
                             option = lmiopcode;
 		    else
@@ -300,13 +265,6 @@ int main(int argc, char *argv[])
 		    else
 			    show_usage();
 		    break;
-	    case 9:
-		    if (strcmp(argv[1], "discard settings") == 0)
-			    option = discard_settings;
-		    else
-			    show_usage();
-		    break;
-
 	    default:
 		    show_usage();
 		    return 1;
@@ -339,9 +297,6 @@ int main(int argc, char *argv[])
 	    case lmiopcode:
 		    thinklmi_lmiopcode(fd, argv[2], argv[3], argv[4], argv[5]);
 		    break;
-	    case lmiopcode_nopap:
-		    thinklmi_lmiopcode_nopap(fd, argv[2], argv[3], argv[4]);
-		    break;
 	    case tpmtype:
 		    thinklmi_tpmtype(fd, argv[2]);
 		    break;
@@ -350,9 +305,6 @@ int main(int argc, char *argv[])
 		    break;
 	    case save_settings:
 		    thinklmi_save_settings(fd);
-		    break;
-	    case discard_settings:
-		    thinklmi_discard_settings(fd);
 		    break;
     }
     close (fd);
