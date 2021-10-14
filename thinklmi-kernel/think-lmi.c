@@ -450,7 +450,7 @@ static void update_auth_string(struct think_lmi *think)
 static int validate_setting_name(struct think_lmi *think, char* setting)
 {
 	int i;
-	for (i = 0; i <= think->settings_count; i++) {
+	for (i = 0; i <= TLMI_MAX_SETTINGS; i++) {
 		if (think->settings[i] != NULL) {
 			if (!strcmp(setting, think->settings[i]))
 					return i;
