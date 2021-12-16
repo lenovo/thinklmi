@@ -830,7 +830,7 @@ static void think_lmi_chardev_exit(struct think_lmi *think)
 	unregister_chrdev_region(tlmi_dev, TLMI_NUM_DEVICES);
 }
 
-static void think_lmi_analyze(struct think_lmi *think)
+static int think_lmi_analyze(struct think_lmi *think)
 {
 	acpi_status status;
 	int i = 0;
@@ -851,8 +851,10 @@ static void think_lmi_analyze(struct think_lmi *think)
 			break;
 		if (!item )
 			break;
-		if (!*item)
+		if (!*item){
+			kfree(item);
 			continue;
+		}
 
 		/* It is not allowed to have '/' for file name.
 		 * Convert it into '\'. */
@@ -888,11 +890,14 @@ static void think_lmi_analyze(struct think_lmi *think)
 
 	if (wmi_has_guid(LENOVO_BIOS_PASSWORD_SETTINGS_GUID))
 		think->can_get_password_settings = true;
+
+	return 0;
 }
 
 static int think_lmi_add(struct wmi_device *wdev)
 {
 	struct think_lmi *think;
+	int ret;
 
 	think = kzalloc(sizeof(struct think_lmi), GFP_KERNEL);
 	if (!think)
@@ -903,7 +908,10 @@ static int think_lmi_add(struct wmi_device *wdev)
 
 	think_lmi_chardev_initialize(think);
 
-	think_lmi_analyze(think);
+	ret = think_lmi_analyze(think);
+	if(ret)
+	    return ret;
+
 	return 0;
 }
 
