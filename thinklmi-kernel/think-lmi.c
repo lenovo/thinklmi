@@ -725,7 +725,7 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			return -EFAULT;
 
 		snprintf(think->passnew, TLMI_PWD_MAXLEN, "%s", value);
-		sprintf(settings_str, "WmiOpcodePasswordNew01:%s;", think->passnew);
+		sprintf(settings_str, "WmiOpcodePasswordNew01:%s", think->passnew);
 		ret = think_lmi_set_lmiopcode_settings(settings_str);
 		if (ret)
 			goto error;

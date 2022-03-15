@@ -27,6 +27,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <stdlib.h>
+#include <ctype.h>
  
 #include "../thinklmi-kernel/think-lmi.h"
 
@@ -73,7 +74,7 @@ void thinklmi_set(int fd, char * argv2, char* argv3)
 	if(ioctl(fd, THINKLMI_SET_SETTING, &setting_string) == -1) {
 	   perror("Unable to change setting");
 	} else {
-	   printf("BIOS Setting changed\n");
+           printf("BIOS Setting changed\n");
            printf("Setting will not change until reboot\n");
 	}
 }
@@ -132,14 +133,21 @@ void thinklmi_lmiopcode(int fd, char *admin, char *passtype, char *oldpass, char
 void thinklmi_tpmtype(int fd, char *tpmtype)
 {
 	char setting_string[TLMI_GETSET_MAXLEN];
-        snprintf(setting_string, TLMI_GETSET_MAXLEN, "%s;", tpmtype);
-        if(ioctl(fd, THINKLMI_TPMTYPE, &setting_string) == -1) {
-           perror("Tpm type change failed");
-        } else {
-           printf("Tpm type changed\n");
-           printf("Setting will not change until reboot\n");
-        }
+	char option;
 
+	printf("Before switching TPM, please make sure the TPM is not in use and all TPM related applications\n");
+	printf("must be disabled, otherwise the TPM will be cleared and you may not be able to access your data\n");
+	printf("\n Do you wish to continue(Y/N):");
+	scanf("%c", &option);
+	if(tolower(option) == 'y' && tolower(option) != 'n') {
+           snprintf(setting_string, TLMI_GETSET_MAXLEN, "%s;", tpmtype);
+           if(ioctl(fd, THINKLMI_TPMTYPE, &setting_string) == -1) {
+              perror("TPM type change failed");
+           } else {
+              printf("TPM type changed\n");
+              printf("Setting will not change until reboot\n");
+           }
+	}
 }
 
 void thinklmi_load_default(int fd)
