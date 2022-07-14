@@ -31,13 +31,17 @@
  
 #include "../thinklmi-kernel/think-lmi.h"
 
+extern char *program_invocation_short_name;
+char msg[256];
+
 void get_settings_all(int fd)
 {
     int i, settings_count;
     unsigned char settings_str[TLMI_SETTINGS_MAXLEN];
 
     if (ioctl(fd, THINKLMI_GET_SETTINGS, &settings_count) == -1) {
-        perror("query_apps ioctl get");
+	snprintf(msg, sizeof(msg)-1, "%s ioctl get", program_invocation_short_name);
+	perror(msg);
     } else {
 	printf("Total settings: %d\n", settings_count);
 	for(i=0; i <= TLMI_MAX_SETTINGS; i++)
@@ -279,7 +283,8 @@ int main(int argc, char *argv[])
     }
     fd = open(file_name, O_RDWR);
     if (fd == -1) {
-	    perror("query_apps open");
+	    snprintf(msg, sizeof(msg)-1, "%s open(%s)", program_invocation_short_name, file_name);
+	    perror(msg);
 	    return 2;
     }
  
