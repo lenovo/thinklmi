@@ -415,6 +415,7 @@ static int think_lmi_set_bios_settings(const char *settings)
 	fprintf("arg2:%s",arg);
 	settings = arg;
 	fprintf("settings_final:%s",settings);
+	
         fclose(ptr);
 	kfree(arg);
 	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID, settings);
