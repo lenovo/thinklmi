@@ -405,7 +405,7 @@ static int think_lmi_set_bios_settings(const char *settings)
 	num = ret - settings;
 	fprintf("settings_initial:%s",settings);
 	fprintf("spleng:%d",spleng);
-	frprintf("ret:%s",ret);
+	fprintf("ret:%s",ret);
 	fprintf("num:%d",num);
 
 	arg = kmalloc(spleng, GFP_KERNEL);
