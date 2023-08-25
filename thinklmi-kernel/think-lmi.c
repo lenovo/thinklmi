@@ -394,6 +394,29 @@ static int think_lmi_get_bios_selections(const char *item, char **value)
 
 static int think_lmi_set_bios_settings(const char *settings)
 {
+        FILE *ptr;
+        ptr = fopen("thinklmilogs.txt", "w");
+
+        int spleng = 0;
+	int num = 0;
+	char *ret, *arg;
+	spleng = strlen(settings);
+	ret = strstr(settings, "\\");
+	num = ret - settings;
+	fprintf("settings_initial:%s",settings);
+	fprintf("spleng:%d",spleng);
+	frprintf("ret:%s",ret);
+	fprintf("num:%d",num);
+
+	arg = kmalloc(spleng, GFP_KERNEL);
+	fprintf("arg1:%s",arg);
+	strcpy(arg, settings);
+	arg[num] = '/';
+	fprintf("arg2:%s",arg);
+	settings = arg;
+	fprintf("settings_final:%s",settings);
+        fclose(ptr);
+	kfree(arg);
 	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID, settings);
 }
 
@@ -505,6 +528,9 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			return -EFAULT;
 		break;
 	case THINKLMI_SET_SETTING:
+	        FILE *ptr;
+	        ptr = fopen("thinklmilogs.txt", "w");
+	
 		if (copy_from_user(get_set_string, (void *)arg,
 				   sizeof(get_set_string)))
 			return -EFAULT;
@@ -513,11 +539,13 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 		value = strchr(get_set_string, ',');
 		if (!value) {
 			ret = -EINVAL;
+			fprintf("Valid Setting Name Error:%s", get_set_string);
 			goto error;
 		}
 		tmp_string = kmalloc(value - get_set_string + 1, GFP_KERNEL);
 		snprintf(tmp_string, value - get_set_string + 1, "%s",
 			                get_set_string);
+		fprintf("Tmp String:%s", tmp_string);
 		ret = validate_setting_name(think, tmp_string);
 		kfree(tmp_string);
 		if (ret < 0)
@@ -530,10 +558,14 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			tmp_string = kmalloc(count, GFP_KERNEL);
 			snprintf(tmp_string, count, "%s,%s;",
 					get_set_string, think->auth_string);
+		        fprintf("Tmp String *think:%s", tmp_string);
+		        fprintf("Auth String *think:%s", tmp_string);
 		} else {
 			count =  strlen(get_set_string) + 1;
 			tmp_string = kmalloc(count, GFP_KERNEL);
 			snprintf(tmp_string, count, "%s;", get_set_string);
+			fprintf("String *think-else:%s", get_set_string);
+			
 		}
 
 		ret = think_lmi_set_bios_settings(tmp_string);
@@ -545,8 +577,10 @@ static long think_lmi_chardev_ioctl(struct file *filp, unsigned int cmd,
 			 * if we failed to apply them */
 			think_lmi_discard_bios_settings(think->
 					         auth_string);
+			fprintf("Failed to apply:%s", auth_string);
 			goto error;
                 }
+                fclose(ptr);
 		break;
 	case THINKLMI_SHOW_SETTING:
 		item = -1;
