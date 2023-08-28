@@ -394,26 +394,20 @@ static int think_lmi_get_bios_selections(const char *item, char **value)
 
 static int think_lmi_set_bios_settings(const char *settings)
 {
-    int spleng = 0;
+	int spleng = 0;
 	int num = 0;
-	char *ret, *arg;
-	spleng = strlen(settings);
-	ret = strstr(settings, "\\");
-	num = ret - settings;
-	printk("settings_initial:%s",settings);
-	printk("spleng:%d",spleng);
-	printk("ret:%s",ret);
-	printk("num:%d",num);
-
-	arg = kmalloc(spleng, GFP_KERNEL);
-	printk("arg1:%s",arg);
-	strcpy(arg, settings);
-	arg[num] = '/';
-	printk("arg2:%s",arg);
-	settings = arg;
-	printk("settings_final:%s",settings);
-
-	kfree(arg);
+	char *arg=settings;
+	spleng = strlen(arg);
+	printk("spleng:%s", spleng);
+	printk("num:%s", num);
+	printk("arg 1:%s", arg);
+	printk("settings:%s", settings);
+	for (num=0;num<spleng;num++)
+	{
+		if (arg[num]=='\\')
+			arg[num]='/';
+	}
+	printk("arg 2", arg);
 	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID, settings);
 }
 
