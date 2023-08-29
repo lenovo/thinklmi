@@ -398,17 +398,17 @@ static int think_lmi_set_bios_settings(const char *settings)
 	int num = 0;
 	char *arg=settings;
 	spleng = strlen(arg);
-	printk("spleng:%s", spleng);
-	printk("num:%s", num);
+	printk("spleng:%d", spleng);
+	printk("num:%d", num);
 	printk("arg 1:%s", arg);
 	printk("settings:%s", settings);
 	for (num=0;num<spleng;num++)
 	{
 		if (arg[num]=='\\')
-			arg[num]='/';
+				arg[num]='/';
 	}
 	printk("arg 2", arg);
-	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID, settings);
+	return think_lmi_simple_call(LENOVO_SET_BIOS_SETTINGS_GUID, arg);
 }
 
 static int think_lmi_save_bios_settings(const char *password)
