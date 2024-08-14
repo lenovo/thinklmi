@@ -806,7 +806,7 @@ static void think_lmi_chardev_initialize(struct think_lmi *think)
 		return;
 	}
 
-	tlmi_class = class_create(THIS_MODULE, "char");
+	tlmi_class = class_create("char");
 	if (IS_ERR(tlmi_class)) {
 		pr_warn("tlmi: char dev class creation failed\n");
 		cdev_del(&think->c_dev);
