@@ -806,7 +806,11 @@ static void think_lmi_chardev_initialize(struct think_lmi *think)
 		return;
 	}
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 4, 0))
 	tlmi_class = class_create("char");
+#else
+	tlmi_class = class_create(THIS_MODULE, "char");
+#endif
 	if (IS_ERR(tlmi_class)) {
 		pr_warn("tlmi: char dev class creation failed\n");
 		cdev_del(&think->c_dev);

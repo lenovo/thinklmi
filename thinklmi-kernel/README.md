@@ -1,5 +1,9 @@
 # think-lmi
 
+**WARNING: THIS DRIVER SHOULD NOT BE USED FOR KERNELS 5.17 AND NEWER**
+Please use the upstream firmware-attributes class driver if available.
+https://github.com/torvalds/linux/blob/master/Documentation/ABI/testing/sysfs-class-firmware-attributes
+
 Linux Driver for Think WMI interface.
 This dirver allows you to control many BIOS settings from Linux via sysfs
 entrypoints or ioctls.
